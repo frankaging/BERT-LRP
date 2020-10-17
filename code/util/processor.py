@@ -8,7 +8,7 @@ import os
 import pandas as pd
 import pickle
 
-from tokenization import *
+from util.tokenization import *
 
 
 class InputExample(object):
@@ -86,7 +86,7 @@ class IMBb_Processor(DataProcessor):
         for (i, line) in enumerate(lines):
             guid = "%s-%s" % (set_type, i)
             text_a = convert_to_unicode(str(line[0]))
-            text_b = ""
+            text_b = None
             label = int(str(line[1]))
             if i%1000==0 and debug:
                 print(i)
@@ -123,7 +123,7 @@ class SemEval_Processor(DataProcessor):
         for (i, line) in enumerate(lines):
             guid = "%s-%s" % (set_type, i)
             text_a = convert_to_unicode(str(line[0]))
-            text_b = ""
+            text_b = None
             label = int(str(line[1]))
             if i%1000==0 and debug:
                 print(i)
@@ -180,7 +180,7 @@ class SST5_Processor(DataProcessor):
         for (i, line) in enumerate(lines):
             guid = "%s-%s" % (set_type, i)
             text_a = convert_to_unicode(str(line[0]))
-            text_b = ""
+            text_b = None
             label = self.generate_class(float(str(line[1])))
             if i%1000==0 and debug:
                 print(i)
@@ -231,7 +231,7 @@ class SST2_Processor(DataProcessor):
         for (i, line) in enumerate(lines):
             guid = "%s-%s" % (set_type, i)
             text_a = convert_to_unicode(str(line[0]))
-            text_b = ""
+            text_b = None
             label = self.generate_class(float(str(line[1])))
             if label == -1:
                 continue
@@ -270,7 +270,7 @@ class Yelp2_Processor(DataProcessor):
         for (i, line) in enumerate(lines):
             guid = "%s-%s" % (set_type, i)
             text_a = convert_to_unicode(str(line[0]))
-            text_b = ""
+            text_b = None
             label = int(str(line[1])) - 1
             if i%1000==0 and debug:
                 print(i)
@@ -307,7 +307,7 @@ class Yelp5_Processor(DataProcessor):
         for (i, line) in enumerate(lines):
             guid = "%s-%s" % (set_type, i)
             text_a = convert_to_unicode(str(line[0]))
-            text_b = ""
+            text_b = None
             label = int(str(line[1])) - 1
             if i%1000==0 and debug:
                 print(i)

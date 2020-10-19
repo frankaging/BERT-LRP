@@ -414,7 +414,9 @@ if __name__ == "__main__":
                         default=None,
                         type=str,
                         required=True,
-                        choices=["sentihood_NLI_M", "sentihood_QA_M"],
+                        choices=["IMDb", "SemEval",
+                                 "SST2", "SST5", 
+                                 "Yelp2", "Yelp5"],
                         help="The name of the task to train.")
     parser.add_argument("--data_dir",
                         default=None,

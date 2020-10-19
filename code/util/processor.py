@@ -162,15 +162,15 @@ class SST5_Processor(DataProcessor):
 
     def generate_class(self, rate):
         if rate >= 0.0 and rate <= 0.2:
-            _class = 1
+            _class = 0
         elif rate > 0.2 and rate <= 0.4:
-            _class = 2
+            _class = 1
         elif rate > 0.4 and rate <= 0.6:
-            _class = 3
+            _class = 2
         elif rate > 0.6 and rate <= 0.8:
-            _class = 4
+            _class = 3
         elif rate > 0.8 and rate <= 1.0:
-            _class = 5
+            _class = 4
         else:
             assert(False)
         return _class

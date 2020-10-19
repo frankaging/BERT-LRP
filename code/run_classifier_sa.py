@@ -379,12 +379,6 @@ def Train(args):
             label_ids = label_ids.to(device)
             seq_lens = seq_lens.to(device)
 
-            print(input_ids.shape)
-            print(input_mask.shape)
-            print(segment_ids.shape)
-            print(label_ids.shape)
-            print(seq_lens.shape)
-
             loss, _, _, _, _ = \
                 model(input_ids, segment_ids, input_mask, seq_lens,
                                   device=device, labels=label_ids)
@@ -392,6 +386,7 @@ def Train(args):
                 loss = loss.mean() # mean() to average on multi-gpu.
             if args.gradient_accumulation_steps > 1:
                 loss = loss / args.gradient_accumulation_steps
+            print(loss)
             loss.backward()
             tr_loss += loss.item()
             nb_tr_examples += input_ids.size(0)

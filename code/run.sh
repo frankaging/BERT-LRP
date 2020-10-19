@@ -1,4 +1,4 @@
-python run_classifier_TABSA.py \
+CUDA_VISIBLE_DEVICES=0 python run_classifier_sa.py \
 --task_name SST5 \
 --data_dir ../data/dataset/SST5/ \
 --vocab_file ../data/uncased_L-12_H-768_A-12/vocab.txt \

@@ -379,7 +379,7 @@ def Train(args):
             label_ids = label_ids.to(device)
             seq_lens = seq_lens.to(device)
 
-            loss, _, _, _, _ = \
+            loss, _ = \
                 model(input_ids, segment_ids, input_mask, seq_lens,
                                   device=device, labels=label_ids)
             if n_gpu > 1:

@@ -401,6 +401,6 @@ class BertForSequenceClassification(nn.Module):
         if labels is not None:
             loss_fct = CrossEntropyLoss()
             loss = loss_fct(logits, labels)
-            return loss, logits, torch.stack(all_encoder_attention_scores, dim=0), embedding_output
+            return loss, logits
         else:
             return logits

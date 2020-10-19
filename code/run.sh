@@ -1,0 +1,15 @@
+python run_classifier_TABSA.py \
+--task_name SST5 \
+--data_dir ../data/dataset/SST5/ \
+--vocab_file ../data/uncased_L-12_H-768_A-12/vocab.txt \
+--bert_config_file ../data/uncased_L-12_H-768_A-12/bert_config.json \
+--model_type ContextBERT \
+--eval_test \
+--do_lower_case \
+--max_seq_length 512 \
+--train_batch_size 20 \
+--learning_rate 2e-5 \
+--num_train_epochs 60 \
+--output_dir ../results/SST5/ \
+--seed 42 \
+--init_checkpoint ../data/uncased_L-12_H-768_A-12/pytorch_model.bin

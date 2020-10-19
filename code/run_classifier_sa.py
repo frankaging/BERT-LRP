@@ -340,9 +340,69 @@ def Train(args):
     elif n_gpu > 1:
         model = torch.nn.DataParallel(model)
 
-    # to be continue
+    model.to(device)
+    output_log_file = os.path.join(args.output_dir, "log.txt")
+    print("output_log_file=",output_log_file)
 
-    
+    with open(output_log_file, "w") as writer:
+        if args.eval_test:
+            writer.write("epoch\tglobal_step\tloss\ttest_loss\ttest_accuracy\n")
+        else:
+            writer.write("epoch\tglobal_step\tloss\n")
+
+    global_step = 0
+    epoch=0
+
+    # training epoch to eval
+    eval_freq_train = 100
+    grads_in_norm_list = []
+    for _ in trange(int(args.num_train_epochs), desc="Epoch"):
+        model.to(device)
+        epoch+=1
+        tr_loss = 0
+        nb_tr_examples, nb_tr_steps = 0, 0
+        for step, batch in enumerate(tqdm(train_dataloader, desc="Iteration")):
+            model.train()
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+
+            # truncate to save space and computing resource
+            input_ids, input_mask, segment_ids, label_ids, seq_lens = batch
+            max_seq_lens = max(seq_lens)[0]
+            input_ids = input_ids[:,:max_seq_lens]
+            input_mask = input_mask[:,:max_seq_lens]
+            segment_ids = segment_ids[:,:max_seq_lens]
+
+            input_ids = input_ids.to(device)
+            input_mask = input_mask.to(device)
+            segment_ids = segment_ids.to(device)
+            label_ids = label_ids.to(device)
+            seq_lens = seq_lens.to(device)
+
+            loss, _, _, _, _ = \
+                model(input_ids, segment_ids, input_mask, seq_lens,
+                                  device=device, labels=label_ids)
+            if n_gpu > 1:
+                loss = loss.mean() # mean() to average on multi-gpu.
+            if args.gradient_accumulation_steps > 1:
+                loss = loss / args.gradient_accumulation_steps
+            loss.backward()
+            tr_loss += loss.item()
+            nb_tr_examples += input_ids.size(0)
+            nb_tr_steps += 1
+            if (step + 1) % args.gradient_accumulation_steps == 0:
+                optimizer.step()    # We have accumulated enought gradients
+                model.zero_grad()
+                global_step += 1
+
+        # save for each time point
+        # if args.save_checkpoint_path:
+        #     torch.save(model.state_dict(), args.save_checkpoint_path + ".bin")
+
+        # save_pred_file = os.path.join(args.output_dir, "test_ep_"+str(epoch)+".txt")
+
+
+
 
 def router(args):
     Train(args)

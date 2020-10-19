@@ -36,7 +36,7 @@ from util.processor import (IMBb_Processor,
 
 from util.tokenization import *
 
-from evaluation import *
+from util.evaluation import *
 
 import logging
 logging.basicConfig(format = '%(asctime)s - %(levelname)s - %(name)s -   %(message)s', 

@@ -392,13 +392,7 @@ class BertForSequenceClassification(nn.Module):
             self.apply(init_weights)
 
     def forward(self, input_ids, token_type_ids, attention_mask, seq_lens,
-                device=None, labels=None,
-                # optional parameters for saving context information
-                context_ids=None, context_lens=None,
-                include_headwise=False,
-                headwise_weight=None,
-                all_target_ids=None,
-                unique_context_feature_ids=None, unique_context_lens=None):
+                device=None, labels=None):
         _, pooled_output, all_encoder_attention_scores, embedding_output \
              = self.bert(input_ids, token_type_ids, attention_mask)
         pooled_output = self.dropout(pooled_output)

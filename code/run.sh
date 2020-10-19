@@ -1,9 +1,9 @@
-CUDA_VISIBLE_DEVICES=0 python run_classifier_sa.py \
+CUDA_VISIBLE_DEVICES=2,3 python run_classifier_sa.py \
 --task_name SST5 \
 --data_dir ../data/dataset/SST/ \
 --vocab_file ../data/uncased_L-12_H-768_A-12/vocab.txt \
 --bert_config_file ../data/uncased_L-12_H-768_A-12/bert_config.json \
---model_type ContextBERT \
+--model_type BERTPretrain \
 --eval_test \
 --do_lower_case \
 --max_seq_length 512 \

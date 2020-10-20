@@ -61,7 +61,7 @@ class DataProcessor(object):
                 lines.append(line)
             return lines
         
-class IMBb_Processor(DataProcessor):
+class IMDb_Processor(DataProcessor):
     """Processor for the IMBb data set."""
 
     def __init__(self):

@@ -205,8 +205,18 @@ def getModelOptimizerTokenizer(model_type, vocab_file, embed_file=None,
         model = BertForSequenceClassification(bert_config, len(label_list))
 
         if init_checkpoint is not None:
-            logger.info("retraining with saved model.")
-            model.bert.load_state_dict(torch.load(init_checkpoint, map_location='cpu'))
+            if "checkpoint" in init_checkpoint:
+                # we need to add handling logic specially for parallel gpu trainign
+                state_dict = torch.load(init_checkpoint, map_location='cpu')
+                from collections import OrderedDict
+                new_state_dict = OrderedDict()
+                for k, v in state_dict.items():
+                    name = k[7:] # remove 'module.' of dataparallel
+                    new_state_dict[name]=v
+                model.load_state_dict(new_state_dict)
+            else:
+                logger.info("retraining with saved model.")
+                model.bert.load_state_dict(torch.load(init_checkpoint, map_location='cpu'))
         no_decay = ['bias', 'gamma', 'beta']
         optimizer_parameters = [
             {'params': [p for n, p in model.named_parameters() 
@@ -350,6 +360,12 @@ def Train(args):
         else:
             writer.write("epoch\tglobal_step\tloss\n")
 
+
+    if "checkpoint" in args.init_checkpoint:
+        logger.info("loading previous checkpoint model not the pretrain BERT-base...")
+        logger.info("the starting accuracy for the model is calculated first.")
+        args.num_train_epochs += 1
+
     global_step = 0
     epoch=0
 
@@ -358,59 +374,18 @@ def Train(args):
     grads_in_norm_list = []
     for _ in trange(int(args.num_train_epochs), desc="Epoch"):
         model.to(device)
-        epoch+=1
         tr_loss = 0
         nb_tr_examples, nb_tr_steps = 0, 0
-        pbar = tqdm(train_dataloader, desc="Iteration")
-        for step, batch in enumerate(pbar):
-            model.train()
-            if torch.cuda.is_available():
-                torch.cuda.empty_cache()
-
-            # truncate to save space and computing resource
-            input_ids, input_mask, segment_ids, label_ids, seq_lens = batch
-            max_seq_lens = max(seq_lens)[0]
-            input_ids = input_ids[:,:max_seq_lens]
-            input_mask = input_mask[:,:max_seq_lens]
-            segment_ids = segment_ids[:,:max_seq_lens]
-
-            input_ids = input_ids.to(device)
-            input_mask = input_mask.to(device)
-            segment_ids = segment_ids.to(device)
-            label_ids = label_ids.to(device)
-            seq_lens = seq_lens.to(device)
-
-            loss, _ = \
-                model(input_ids, segment_ids, input_mask, seq_lens,
-                                  device=device, labels=label_ids)
-            if n_gpu > 1:
-                loss = loss.mean() # mean() to average on multi-gpu.
-            if args.gradient_accumulation_steps > 1:
-                loss = loss / args.gradient_accumulation_steps
-            loss.backward()
-            tr_loss += loss.item()
-            nb_tr_examples += input_ids.size(0)
-            nb_tr_steps += 1
-            if (step + 1) % args.gradient_accumulation_steps == 0:
-                optimizer.step()    # We have accumulated enought gradients
-                model.zero_grad()
-                global_step += 1
-            pbar.set_postfix({'train_loss': loss.tolist()})
-
-        # save for each time point
-        if args.output_dir:
-            torch.save(model.state_dict(), args.output_dir + "checkpoint.bin")
-
-        # eval_test
-        if args.eval_test:
-            model.eval()
-            test_loss, test_accuracy = 0, 0
-            nb_test_steps, nb_test_examples = 0, 0
-
-            for input_ids, input_mask, segment_ids, label_ids, seq_lens in test_dataloader:
+        if "checkpoint" not in args.init_checkpoint or \
+            ("checkpoint" in args.init_checkpoint and epoch != 0) :
+            pbar = tqdm(train_dataloader, desc="Iteration")
+            for step, batch in enumerate(pbar):
+                model.train()
                 if torch.cuda.is_available():
                     torch.cuda.empty_cache()
+
                 # truncate to save space and computing resource
+                input_ids, input_mask, segment_ids, label_ids, seq_lens = batch
                 max_seq_lens = max(seq_lens)[0]
                 input_ids = input_ids[:,:max_seq_lens]
                 input_mask = input_mask[:,:max_seq_lens]
@@ -422,39 +397,86 @@ def Train(args):
                 label_ids = label_ids.to(device)
                 seq_lens = seq_lens.to(device)
 
-                # intentially with gradient
-                tmp_test_loss, logits = \
+                loss, _ = \
                     model(input_ids, segment_ids, input_mask, seq_lens,
-                            device=device, labels=label_ids)
+                                    device=device, labels=label_ids)
+                if n_gpu > 1:
+                    loss = loss.mean() # mean() to average on multi-gpu.
+                if args.gradient_accumulation_steps > 1:
+                    loss = loss / args.gradient_accumulation_steps
+                loss.backward()
+                tr_loss += loss.item()
+                nb_tr_examples += input_ids.size(0)
+                nb_tr_steps += 1
+                if (step + 1) % args.gradient_accumulation_steps == 0:
+                    optimizer.step()    # We have accumulated enought gradients
+                    model.zero_grad()
+                    global_step += 1
+                pbar.set_postfix({'train_loss': loss.tolist()})
 
-                logits = F.softmax(logits, dim=-1)
-                logits = logits.detach().cpu().numpy()
-                label_ids = label_ids.to('cpu').numpy()
-                outputs = np.argmax(logits, axis=1)
-                tmp_test_accuracy=np.sum(outputs == label_ids)
+            # save for each time point
+            if args.output_dir:
+                torch.save(model.state_dict(), args.output_dir + "checkpoint.bin")
+        epoch+=1
 
-                test_loss += tmp_test_loss.mean().item()
-                test_accuracy += tmp_test_accuracy
+        # eval_test
+        if args.eval_test:
+            model.eval()
+            test_loss, test_accuracy = 0, 0
+            nb_test_steps, nb_test_examples = 0, 0
+            # we don't need gradient in this case.
+            with torch.no_grad():
+                for input_ids, input_mask, segment_ids, label_ids, seq_lens in test_dataloader:
+                    if torch.cuda.is_available():
+                        torch.cuda.empty_cache()
+                    # truncate to save space and computing resource
+                    max_seq_lens = max(seq_lens)[0]
+                    input_ids = input_ids[:,:max_seq_lens]
+                    input_mask = input_mask[:,:max_seq_lens]
+                    segment_ids = segment_ids[:,:max_seq_lens]
 
-                nb_test_examples += input_ids.size(0)
-                nb_test_steps += 1
+                    input_ids = input_ids.to(device)
+                    input_mask = input_mask.to(device)
+                    segment_ids = segment_ids.to(device)
+                    label_ids = label_ids.to(device)
+                    seq_lens = seq_lens.to(device)
 
-            test_loss = test_loss / nb_test_steps
-            test_accuracy = test_accuracy / nb_test_examples
-            
-            print("Test Accuracy: %0.2f\n"%(test_accuracy))
+                    # intentially with gradient
+                    tmp_test_loss, logits = \
+                        model(input_ids, segment_ids, input_mask, seq_lens,
+                                device=device, labels=label_ids)
+
+                    logits = F.softmax(logits, dim=-1)
+                    logits = logits.detach().cpu().numpy()
+                    label_ids = label_ids.to('cpu').numpy()
+                    outputs = np.argmax(logits, axis=1)
+                    tmp_test_accuracy=np.sum(outputs == label_ids)
+
+                    test_loss += tmp_test_loss.mean().item()
+                    test_accuracy += tmp_test_accuracy
+
+                    nb_test_examples += input_ids.size(0)
+                    nb_test_steps += 1
+
+                test_loss = test_loss / nb_test_steps
+                test_accuracy = test_accuracy / nb_test_examples
 
         result = collections.OrderedDict()
+        # handling corner case for a checkpoint start
+        if nb_tr_steps == 0:
+            loss_tr = 0.0
+        else:
+            loss_tr = tr_loss/nb_tr_steps
         if args.eval_test:
             result = {'epoch': epoch,
                     'global_step': global_step,
-                    'loss': tr_loss/nb_tr_steps,
+                    'loss': loss_tr,
                     'test_loss': test_loss,
                     'test_accuracy': test_accuracy}
         else:
             result = {'epoch': epoch,
                     'global_step': global_step,
-                    'loss': tr_loss/nb_tr_steps}
+                    'loss': loss_tr}
 
         logger.info("***** Eval results *****")
         with open(output_log_file, "a+") as writer:

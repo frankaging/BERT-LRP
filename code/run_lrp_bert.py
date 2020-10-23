@@ -10,6 +10,7 @@ import argparse
 import pickle
 
 import collections
+from functools import partial
 
 import torch
 import torch.nn as nn
@@ -156,10 +157,6 @@ def _truncate_seq_pair(tokens_a, tokens_b, max_length):
         else:
             tokens_b.pop()
 
-def save_activation(name, mod, inps, out):
-    """Save activations and inputs into dictionarys"""
-    func_inputs[name] = [inp.cpu() for inp in inps]
-    func_activations[name] = out.cpu()
 
 def getModelOptimizerTokenizer(model_type, vocab_file, embed_file=None, 
                                bert_config_file=None, init_checkpoint=None,
@@ -235,13 +232,8 @@ def getModelOptimizerTokenizer(model_type, vocab_file, embed_file=None,
                             warmup=warmup_proportion,
                             t_total=num_train_steps)
 
-        # Registering hooks for all the Conv2d layers
-        # Note: Hooks are called EVERY TIME the module performs a forward pass. For modules that are
-        # called repeatedly at different stages of the forward pass (like RELUs), this will save different
-        # activations. Editing the forward pass code to save activations is the way to go for these cases.
-        for name, m in model.named_modules():
-            # partial to assign the layer name to each hook
-            m.register_forward_hook(partial(save_activation, name))
+        # initialize all the hooks
+        init_hooks_lrp(model)
 
     else:
         logger.info("***** Not Support Model Type *****")
@@ -259,10 +251,6 @@ def LRP(args):
         torch.distributed.init_process_group(backend='nccl')
     logger.info("device %s n_gpu %d distributed training %r", device, n_gpu, bool(args.local_rank != -1))
 
-    if args.accumulate_gradients < 1:
-        raise ValueError("Invalid accumulate_gradients parameter: {}, should be >= 1".format(
-                            args.accumulate_gradients))
-
     random.seed(args.seed)
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
@@ -275,11 +263,6 @@ def LRP(args):
             raise ValueError(
                 "Cannot use sequence length {} because the BERT model was only trained up to sequence length {}".format(
                 args.max_seq_length, bert_config.max_position_embeddings))
-
-    # not preloading
-    if os.path.exists(args.output_dir) and os.listdir(args.output_dir):
-        raise ValueError("Output directory ({}) already exists and is not empty.".format(args.output_dir))
-    os.makedirs(args.output_dir, exist_ok=True)
 
     # prepare dataloaders
     processors = {
@@ -340,8 +323,6 @@ def LRP(args):
 
     if "checkpoint" in args.init_checkpoint:
         logger.info("loading previous checkpoint model not the pretrain BERT-base...")
-        logger.info("the starting accuracy for the model is calculated first.")
-        args.num_train_epochs += 1
 
     model.eval() # this line will deactivate dropouts
     test_loss, test_accuracy = 0, 0
@@ -367,6 +348,17 @@ def LRP(args):
             model(input_ids, segment_ids, input_mask, seq_lens,
                     device=device, labels=label_ids)
 
+        LRP_class = 4
+        Rout_mask = torch.zeros((input_ids.shape[0], len(label_ids))).to(device)
+        Rout_mask[LRP_class] = 1.0
+        logits = func_activations['model.classifier']
+        R_final = logits*Rout_mask
+        R_tokens = model.backward_lrp(R_final)
+
+        print(R_tokens.shape)
+        # TODO: remove break here for testing
+        break
+
         logits = F.softmax(logits, dim=-1)
         logits = logits.detach().cpu().numpy()
         label_ids = label_ids.to('cpu').numpy()
@@ -378,15 +370,6 @@ def LRP(args):
 
         nb_test_examples += input_ids.size(0)
         nb_test_steps += 1
-
-        # access global vars here
-        func_activations = {name: outputs for name, outputs in func_activations.items()}
-        for k, v in func_activations.items():
-            print(k, v.shape)
-            print("***")
-
-        # TODO: remove break here for testing
-        break
 
     test_loss = test_loss / nb_test_steps
     test_accuracy = test_accuracy / nb_test_examples
@@ -401,11 +384,6 @@ def LRP(args):
         logger.info("  %s = %s\n", key, str(result[key]))
 
 def router(args):
-    # define global dict to save activations and inputs
-    global func_inputs
-    global func_activations
-    func_inputs = collections.defaultdict(list)
-    func_activations = collections.defaultdict(list)
     LRP(args)
 
 if __name__ == "__main__":
@@ -429,11 +407,6 @@ if __name__ == "__main__":
                         type=str,
                         required=True,
                         help="The vocabulary file that the model was trained on.")
-    parser.add_argument("--output_dir",
-                        default=None,
-                        type=str,
-                        required=True,
-                        help="The output directory where the model checkpoints will be written.")
     parser.add_argument('--model_type', 
                         type=str,
                         default=None,
@@ -445,6 +418,10 @@ if __name__ == "__main__":
                         required=True,
                         help="Initial checkpoint (usually from a pre-trained model).")       
     ## Other parameters
+    parser.add_argument("--output_dir",
+                        default=None,
+                        type=str,
+                        help="The output directory where the model checkpoints will be written.")
     parser.add_argument("--bert_config_file",
                         default=None,
                         type=str,

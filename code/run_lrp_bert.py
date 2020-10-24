@@ -204,7 +204,8 @@ def getModelOptimizerTokenizer(model_type, vocab_file, embed_file=None,
         # vocab size is shrinked.
         bert_config.vocab_size = len(tokenizer.vocab)
         # model and optimizer
-        model = BertForSequenceClassification(bert_config, len(label_list))
+        model = BertForSequenceClassification(bert_config, len(label_list), 
+                                              init_lrp=True)
 
         if init_checkpoint is not None:
             if "checkpoint" in init_checkpoint:
@@ -231,9 +232,6 @@ def getModelOptimizerTokenizer(model_type, vocab_file, embed_file=None,
                             lr=learning_rate,
                             warmup=warmup_proportion,
                             t_total=num_train_steps)
-
-        # initialize all the hooks
-        init_hooks_lrp(model)
 
     else:
         logger.info("***** Not Support Model Type *****")
@@ -324,13 +322,18 @@ def LRP(args):
     if "checkpoint" in args.init_checkpoint:
         logger.info("loading previous checkpoint model not the pretrain BERT-base...")
 
+    lrp_scores = []
+    inputs_ids = []
+    seqs_lens = []
+
     model.eval() # this line will deactivate dropouts
     test_loss, test_accuracy = 0, 0
     nb_test_steps, nb_test_examples = 0, 0
     # we don't need gradient in this case.
-    for input_ids, input_mask, segment_ids, label_ids, seq_lens in test_dataloader:
+    for step, batch in enumerate(tqdm(test_dataloader, desc="Iteration")):
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
+        input_ids, input_mask, segment_ids, label_ids, seq_lens = batch
         # truncate to save space and computing resource
         max_seq_lens = max(seq_lens)[0]
         input_ids = input_ids[:,:max_seq_lens]
@@ -348,16 +351,18 @@ def LRP(args):
             model(input_ids, segment_ids, input_mask, seq_lens,
                     device=device, labels=label_ids)
 
+        # for lrp
         LRP_class = 4
-        Rout_mask = torch.zeros((input_ids.shape[0], len(label_ids))).to(device)
-        Rout_mask[LRP_class] = 1.0
+        Rout_mask = torch.zeros((input_ids.shape[0], len(label_list))).to(device)
+        Rout_mask[:, LRP_class] = 1.0
         logits = func_activations['model.classifier']
-        R_final = logits*Rout_mask
-        R_tokens = model.backward_lrp(R_final)
-
-        print(R_tokens.shape)
-        # TODO: remove break here for testing
-        break
+        relevance_score = logits*Rout_mask
+        lrp_score = model.backward_lrp(relevance_score).sum(dim=-1).cpu().data
+        input_ids = input_ids.cpu().data
+        seq_lens = seq_lens.cpu().data
+        lrp_scores.append(lrp_score)
+        inputs_ids.append(input_ids)
+        seqs_lens.append(seq_lens)
 
         logits = F.softmax(logits, dim=-1)
         logits = logits.detach().cpu().numpy()
@@ -375,13 +380,20 @@ def LRP(args):
     test_accuracy = test_accuracy / nb_test_examples
 
     result = collections.OrderedDict()
-    if args.eval_test:
-        result = {'test_loss': test_loss,
-                  'test_accuracy': test_accuracy}
-
+    result = {'test_loss': test_loss,
+                'test_accuracy': test_accuracy}
     logger.info("***** Eval results *****")
     for key in result.keys():
         logger.info("  %s = %s\n", key, str(result[key]))
+
+    # also save lrp results into a pickle file
+    lrp_state_dict = dict()
+    lrp_state_dict["lrp_scores"] = lrp_scores
+    lrp_state_dict["inputs_ids"] = inputs_ids
+    lrp_state_dict["seqs_lens"] = seqs_lens
+    logger.info("***** Saving LRP to disk *****")
+    torch.save(lrp_state_dict, os.path.join(args.output_dir + 'lrp_state.pt'))
+    logger.info("***** Finish LRP *****")
 
 def router(args):
     LRP(args)

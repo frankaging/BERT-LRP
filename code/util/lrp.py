@@ -44,13 +44,22 @@ def a_lap_vectorize(post_hs, pre_hs, attn_hs, post_A, eps=1e-6, bias=0.0, bias_f
     e.g., (b, n_head, seq_l, d_hid)
     if n_head should be 1 incase of local attention tracing
     '''
+    # simple workaround for determining the device
+    cuda_check = post_hs.is_cuda
+    pos_unit = torch.tensor(1.)
+    neg_unit = torch.tensor(-1.)
+    if cuda_check:
+        get_cuda_device = post_hs.get_device()
+        pos_unit = pos_unit.to(get_cuda_device)
+        neg_unit = neg_unit.to(get_cuda_device)
+
     seq_l = post_hs.shape[2]
     attn_hs_T = attn_hs.transpose(2,3).contiguous()
     attn_hs_T_expand = attn_hs_T.unsqueeze(dim=-1)
     pre_hs_expand = pre_hs.unsqueeze(dim=3)
     numer_vec = pre_hs_expand * attn_hs_T_expand
     # stablizing
-    sign_out = torch.where(post_hs>=0, torch.tensor(1.), torch.tensor(-1.))
+    sign_out = torch.where(post_hs>=0, pos_unit, neg_unit)
     post_hs += eps * sign_out
     post_hs_expand = torch.stack(seq_l*[post_hs], dim=2)
     sign_out_expand = torch.stack(seq_l*[sign_out], dim=2)

@@ -18,7 +18,7 @@ from torch.nn import CrossEntropyLoss
 import collections
 from functools import partial
 
-from util.lrp import l_lap_grad
+from util.lrp import *
 
 # access global vars here
 global func_inputs
@@ -305,10 +305,11 @@ class BERTSelfAttention(nn.Module):
         value_out = func_activations[layer_name_value]
         value_out_reshape = self.transpose_for_scores(value_out)
 
+        relevance_score = self.transpose_for_context(relevance_score)
         relevance_score = a_lap_vectorize(context_layer_reshape, value_out_reshape, 
                                           attention_probs, relevance_score)
+
         relevance_score = self.transpose_for_value(relevance_score)
-        
         relevance_score = l_lap_grad(value_out, value_in, relevance_score)
 
         return relevance_score
@@ -525,8 +526,6 @@ class BertModel(nn.Module):
     def backward_lrp(self, relevance_score):
         relevance_score = self.pooler.backward_lrp(relevance_score)
         relevance_score = self.encoder.backward_lrp(relevance_score)
-
-
         return relevance_score
 
 class BertForSequenceClassification(nn.Module):
@@ -550,7 +549,7 @@ class BertForSequenceClassification(nn.Module):
     logits = model(input_ids, token_type_ids, input_mask)
     ```
     """
-    def __init__(self, config, num_labels, init_weight=True):
+    def __init__(self, config, num_labels, init_weight=True, init_lrp=False):
         super(BertForSequenceClassification, self).__init__()
         self.bert = BertModel(config)
         self.dropout = nn.Dropout(config.hidden_dropout_prob)
@@ -569,6 +568,10 @@ class BertForSequenceClassification(nn.Module):
                 if isinstance(module, nn.Linear):
                     module.bias.data.zero_()
             self.apply(init_weights)
+
+        if init_lrp:
+            print("init_lrp = True")
+            init_hooks_lrp(self)
 
     def forward(self, input_ids, token_type_ids, attention_mask, seq_lens,
                 device=None, labels=None):

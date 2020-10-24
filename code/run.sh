@@ -18,7 +18,7 @@ CUDA_VISIBLE_DEVICES=4,5,7,8 python run_classifier_sa.py \
 --load_checkpoint_model
 
 # This is a template for running LRP analysis
-CUDA_VISIBLE_DEVICES=7 python run_lrp_bert.py \
+CUDA_VISIBLE_DEVICES=0 python run_lrp_bert.py \
 --task_name SST5 \
 --data_dir ../data/dataset/SST/ \
 --vocab_file ../data/uncased_L-12_H-768_A-12/vocab.txt \
@@ -28,4 +28,5 @@ CUDA_VISIBLE_DEVICES=7 python run_lrp_bert.py \
 --max_seq_length 512 \
 --eval_batch_size 5 \
 --seed 42 \
+--output_dir ../results/SST5/ \
 --init_checkpoint ../results/SST5/checkpoint.bin

@@ -60,8 +60,18 @@ def init_hooks_lrp(model):
     model.bert.pooler.register_forward_hook(
         get_inputivation('model.bert.pooler'))
 
+    model.bert.embeddings.word_embeddings.register_forward_hook(
+        get_activation('model.bert.embeddings.word_embeddings'))
+    model.bert.embeddings.register_forward_hook(
+        get_activation('model.bert.embeddings'))
+
     layer_module_index = 0
     for module_layer in model.bert.encoder.layer:
+        layer_name_output_layernorm = 'model.bert.encoder.' + str(layer_module_index) + \
+                                '.output.LayerNorm'
+        module_layer.output.LayerNorm.register_forward_hook(
+            get_inputivation(layer_name_output_layernorm))
+
         layer_name_dense = 'model.bert.encoder.' + str(layer_module_index) + \
                                 '.output.dense'
         module_layer.output.dense.register_forward_hook(
@@ -75,6 +85,11 @@ def init_hooks_lrp(model):
             get_inputivation(layer_name_inter))
         module_layer.intermediate.dense.register_forward_hook(
             get_activation(layer_name_inter))
+
+        layer_name_attn_layernorm = 'model.bert.encoder.' + str(layer_module_index) + \
+                                '.attention.output.LayerNorm'
+        module_layer.attention.output.LayerNorm.register_forward_hook(
+            get_inputivation(layer_name_attn_layernorm))
 
         layer_name_attn = 'model.bert.encoder.' + str(layer_module_index) + \
                                 '.attention.output.dense'
@@ -95,7 +110,6 @@ def init_hooks_lrp(model):
         module_layer.attention.self.value.register_forward_hook(
             get_activation(layer_name_value))
 
-    
         layer_module_index += 1
 
 def gelu(x):
@@ -120,7 +134,8 @@ class BertConfig(object):
                 attention_probs_dropout_prob=0.1,
                 max_position_embeddings=512,
                 type_vocab_size=16,
-                initializer_range=0.02):
+                initializer_range=0.02,
+                full_pooler=False): # this is for transformer-like BERT
         """Constructs BertConfig.
 
         Args:
@@ -156,6 +171,7 @@ class BertConfig(object):
         self.max_position_embeddings = max_position_embeddings
         self.type_vocab_size = type_vocab_size
         self.initializer_range = initializer_range
+        self.full_pooler = full_pooler
 
     @classmethod
     def from_dict(cls, json_object):
@@ -219,14 +235,19 @@ class BERTEmbeddings(nn.Module):
             token_type_ids = torch.zeros_like(input_ids)
 
         words_embeddings = self.word_embeddings(input_ids)
-        position_embeddings = self.position_embeddings(position_ids)
-        token_type_embeddings = self.token_type_embeddings(token_type_ids)
+        # position_embeddings = self.position_embeddings(position_ids)
+        # token_type_embeddings = self.token_type_embeddings(token_type_ids)
 
-        embeddings = words_embeddings + position_embeddings + token_type_embeddings
-        embeddings = self.LayerNorm(embeddings)
-        embeddings = self.dropout(embeddings)
-        return embeddings
+        # embeddings = words_embeddings + position_embeddings + token_type_embeddings
+        # embeddings = self.LayerNorm(embeddings)
+        # embeddings = self.dropout(embeddings)
+        return words_embeddings
 
+    def backward_lrp(self, relevance_score):
+        word_embeddings_out = func_activations['model.bert.embeddings.word_embeddings']
+        embeddings_out = func_activations['model.bert.embeddings']
+        relevance_score = l_lap_grad(embeddings_out, word_embeddings_out, relevance_score)
+        return relevance_score
 
 class BERTSelfAttention(nn.Module):
     def __init__(self, config):
@@ -335,10 +356,14 @@ class BERTSelfOutput(nn.Module):
         return hidden_states
     
     def backward_lrp(self, relevance_score, layer_module_index):
+        layer_name_attn_layernorm = 'model.bert.encoder.' + str(layer_module_index) + \
+                                '.attention.output.LayerNorm'
+        layernorm_in = func_inputs[layer_name_attn_layernorm][0]
         layer_name = 'model.bert.encoder.' + str(layer_module_index) + \
                         '.attention.output.dense'
         dense_in = func_inputs[layer_name][0]
         dense_out = func_activations[layer_name]
+        relevance_score = l_lap_grad(layernorm_in, dense_out, relevance_score)
         relevance_score = l_lap_grad(dense_out, dense_in, relevance_score)
         return relevance_score
 
@@ -391,11 +416,14 @@ class BERTOutput(nn.Module):
         return hidden_states
 
     def backward_lrp(self, relevance_score, layer_module_index):
-        # TODO: layernorm layer lrp need to be defined
+        layer_name_output_layernorm = 'model.bert.encoder.' + str(layer_module_index) + \
+                                '.output.LayerNorm'
+        layernorm_in = func_inputs[layer_name_output_layernorm][0]
         layer_name = 'model.bert.encoder.' + str(layer_module_index) + \
                         '.output.dense'
         dense_in = func_inputs[layer_name][0]
         dense_out = func_activations[layer_name]
+        relevance_score = l_lap_grad(layernorm_in, dense_out, relevance_score)
         relevance_score = l_lap_grad(dense_out, dense_in, relevance_score)
         return relevance_score
 
@@ -442,13 +470,46 @@ class BERTEncoder(nn.Module):
             layer_module_index -= 1
         return relevance_score
 
+class BERTFullPooler(nn.Module):
+    def __init__(self, config):
+        super(BERTFullPooler, self).__init__()
+        self.attention_gate = nn.Sequential(nn.Linear(config.hidden_size, 32),
+                              nn.ReLU(),
+                              nn.Dropout(config.hidden_dropout_prob),
+                              nn.Linear(32, 1))
+        # old fileds
+        self.dense = nn.Linear(config.hidden_size, config.hidden_size)
+        self.activation = nn.Tanh()
+
+    def forward(self, hidden_states, optional_attn_mask=None):
+        #######################################################################
+        # In pooling, we are using a local context attention mechanism, instead
+        # of just pooling the first [CLS] elements
+        attn_scores = self.attention_gate(hidden_states)
+        extended_attention_mask = optional_attn_mask.unsqueeze(dim=-1)
+        attn_scores = \
+            attn_scores.masked_fill(extended_attention_mask == 0, -1e9)
+        attn_scores = nn.Softmax(dim=1)(attn_scores)
+        # attened embeddings
+        pooled_output = \
+            torch.matmul(attn_scores.permute(0,2,1), hidden_states).squeeze(dim=1)
+        #######################################################################
+        pooled_output = self.dense(pooled_output)
+        pooled_output = self.activation(pooled_output)
+        return pooled_output
+
+    def backward_lrp(self, relevance_score):
+        # TODO:
+
+        return relevance_score
+
 class BERTPooler(nn.Module):
     def __init__(self, config):
         super(BERTPooler, self).__init__()
         self.dense = nn.Linear(config.hidden_size, config.hidden_size)
         self.activation = nn.Tanh()
 
-    def forward(self, hidden_states):
+    def forward(self, hidden_states, optional_attn_mask=None):
         # We "pool" the model by simply taking the hidden state corresponding
         # to the first token.
         first_token_tensor = hidden_states[:, 0]
@@ -494,7 +555,10 @@ class BertModel(nn.Module):
         super(BertModel, self).__init__()
         self.embeddings = BERTEmbeddings(config)
         self.encoder = BERTEncoder(config)
-        self.pooler = BERTPooler(config)
+        if config.full_pooler:
+            self.pooler = BERTFullPooler(config)
+        else:
+            self.pooler = BERTPooler(config)
 
     def forward(self, input_ids, token_type_ids=None, attention_mask=None):
         if attention_mask is None:
@@ -520,12 +584,13 @@ class BertModel(nn.Module):
         embedding_output = self.embeddings(input_ids, token_type_ids)
         all_encoder_layers, all_encoder_attention_scores = self.encoder(embedding_output, extended_attention_mask)
         sequence_output = all_encoder_layers[-1]
-        pooled_output = self.pooler(sequence_output)
+        pooled_output = self.pooler(sequence_output, optional_attn_mask=attention_mask)
         return all_encoder_layers, pooled_output, all_encoder_attention_scores, embedding_output
 
     def backward_lrp(self, relevance_score):
         relevance_score = self.pooler.backward_lrp(relevance_score)
         relevance_score = self.encoder.backward_lrp(relevance_score)
+        relevance_score = self.embeddings.backward_lrp(relevance_score)
         return relevance_score
 
 class BertForSequenceClassification(nn.Module):

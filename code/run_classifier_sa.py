@@ -178,6 +178,42 @@ def getModelOptimizerTokenizer(model_type, vocab_file, embed_file=None,
             logger.info("retraining with saved model.")
             checkpoint = torch.load(init_checkpoint, map_location='cpu')
             model.load_state_dict(checkpoint)
+    if model_type == "BERT":
+        logger.info("model = BERT (Transformer Like)")
+        bert_config = BertConfig(
+            hidden_size=512,
+            num_hidden_layers=6,
+            num_attention_heads=8,
+            intermediate_size=768,
+            hidden_act="gelu",
+            hidden_dropout_prob=0.2,
+            attention_probs_dropout_prob=0.2,
+            max_position_embeddings=512,
+            type_vocab_size=2,
+            initializer_range=0.02,
+            full_pooler=True
+        )
+        tokenizer = FullTokenizer(
+            vocab_file=vocab_file, do_lower_case=do_lower_case, pretrain=False)
+        # overwrite the vocab size to be exact. this also save space incase
+        # vocab size is shrinked.
+        bert_config.vocab_size = len(tokenizer.vocab)
+        # model and optimizer
+        model = BertForSequenceClassification(bert_config, len(label_list), init_weight=False)
+
+        if init_checkpoint is not None:
+            if "checkpoint" in init_checkpoint:
+                # we need to add handling logic specially for parallel gpu trainign
+                state_dict = torch.load(init_checkpoint, map_location='cpu')
+                from collections import OrderedDict
+                new_state_dict = OrderedDict()
+                for k, v in state_dict.items():
+                    name = k[7:] # remove 'module.' of dataparallel
+                    new_state_dict[name]=v
+                model.load_state_dict(new_state_dict)
+            else:
+                logger.warning("this is not a pretrained model")
+        optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=1e-4)
     elif model_type == "BERTPretrain":
         logger.info("model = BERTPretrain")
         if bert_config_file is not None:
@@ -361,7 +397,7 @@ def Train(args):
             writer.write("epoch\tglobal_step\tloss\n")
 
 
-    if "checkpoint" in args.init_checkpoint:
+    if args.init_checkpoint is not None and "checkpoint" in args.init_checkpoint:
         logger.info("loading previous checkpoint model not the pretrain BERT-base...")
         logger.info("the starting accuracy for the model is calculated first.")
         args.num_train_epochs += 1
@@ -376,7 +412,8 @@ def Train(args):
         model.to(device)
         tr_loss = 0
         nb_tr_examples, nb_tr_steps = 0, 0
-        if "checkpoint" not in args.init_checkpoint or \
+        if args.init_checkpoint is None or \
+            "checkpoint" not in args.init_checkpoint or \
             ("checkpoint" in args.init_checkpoint and epoch != 0) :
             pbar = tqdm(train_dataloader, desc="Iteration")
             for step, batch in enumerate(pbar):

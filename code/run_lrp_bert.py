@@ -247,12 +247,12 @@ def LRP(args):
         n_gpu = 1
         # Initializes the distributed backend which will take care of sychronizing nodes/GPUs
         torch.distributed.init_process_group(backend='nccl')
-    logger.info("device %s n_gpu %d distributed training %r", device, n_gpu, bool(args.local_rank != -1))
+    logger.info("using device %s: n_gpu %d distributed training %r", device, n_gpu, bool(args.local_rank != -1))
 
     random.seed(args.seed)
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
-    if n_gpu > 0:
+    if n_gpu > 0 and not args.no_cuda:
         torch.cuda.manual_seed_all(args.seed)
 
     if args.bert_config_file is not None:
@@ -301,8 +301,12 @@ def LRP(args):
     all_label_ids = torch.tensor([f.label_id for f in test_features], dtype=torch.long)
     all_seq_len = torch.tensor([[f.seq_len] for f in test_features], dtype=torch.long)
 
-    test_data = TensorDataset(all_input_ids, all_input_mask, all_segment_ids,
+    test_data_full = TensorDataset(all_input_ids, all_input_mask, all_segment_ids,
                                 all_label_ids, all_seq_len)
+    # we will need to only partition a part of test set to do lrp
+    # as we dont want to overwhelm memory and disk.
+    # ~2000 test samples may consume up to 500MB space.
+    test_data, _ = torch.utils.data.random_split(test_data_full, [args.eval_size, int(len(test_data_full)) - args.eval_size])
     test_dataloader = DataLoader(test_data, batch_size=args.eval_batch_size, shuffle=False)
 
     logger.info("***** Running lrp on test examples *****")
@@ -313,7 +317,7 @@ def LRP(args):
         model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.local_rank],
                                                           output_device=args.local_rank)
     # we recommand to run lrp in 1 cpu
-    elif n_gpu > 1:
+    elif n_gpu > 1 and not args.no_cuda:
         logger.info("***** WARNING: Please run LRP on a single GPU *****")
         model = torch.nn.DataParallel(model)
 
@@ -352,7 +356,7 @@ def LRP(args):
                     device=device, labels=label_ids)
 
         # for lrp
-        LRP_class = 4
+        LRP_class = len(label_list) - 1
         Rout_mask = torch.zeros((input_ids.shape[0], len(label_list))).to(device)
         Rout_mask[:, LRP_class] = 1.0
         logits = func_activations['model.classifier']
@@ -363,6 +367,9 @@ def LRP(args):
         lrp_scores.append(lrp_score)
         inputs_ids.append(input_ids)
         seqs_lens.append(seq_lens)
+
+        # for gradient
+
 
         logits = F.softmax(logits, dim=-1)
         logits = logits.detach().cpu().numpy()
@@ -428,7 +435,15 @@ if __name__ == "__main__":
                         default=None,
                         type=str,
                         required=True,
-                        help="Initial checkpoint (usually from a pre-trained model).")       
+                        help="Initial checkpoint (usually from a pre-trained model).")   
+    parser.add_argument("--eval_size",
+                        default=2000,
+                        type=int,
+                        required=True,
+                        help="Total number of sentences to do lrp."
+                             "This is required as some dataset come with a very large "
+                             "test set where lrp on full test set is impossible "
+                             "given disk and memory constraints.")    
     ## Other parameters
     parser.add_argument("--output_dir",
                         default=None,

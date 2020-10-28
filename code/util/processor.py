@@ -348,17 +348,17 @@ class AdvSA_Processor(DataProcessor):
     def get_train_examples(self, data_dir):
         """See base class."""
         train_data = adversarial_yelp_round1_reader(data_dir, "adversarial-sentiment-round01-train.jsonl")
-        return _create_examples(train_data, "train")
+        return self._create_examples(train_data, "train")
 
     def get_dev_examples(self, data_dir):
         """See base class."""
         dev_data = adversarial_yelp_round1_reader(data_dir, "adversarial-sentiment-round01-dev.jsonl")
-        return _create_examples(dev_data, "dev")
+        return self._create_examples(dev_data, "dev")
 
     def get_test_examples(self, data_dir):
         """See base class."""
         test_data = adversarial_yelp_round1_reader(data_dir, "adversarial-sentiment-round01-test.jsonl")
-        return _create_examples(test_data, "test")
+        return self._create_examples(test_data, "test")
 
     def get_labels(self):
         """See base class."""

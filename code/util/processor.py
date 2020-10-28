@@ -4,6 +4,7 @@
 
 import csv
 import os
+import json
 
 import pandas as pd
 import pickle
@@ -309,6 +310,67 @@ class Yelp5_Processor(DataProcessor):
             text_a = convert_to_unicode(str(line[0]))
             text_b = None
             label = int(str(line[1])) - 1
+            if i%1000==0 and debug:
+                print(i)
+                print("guid=",guid)
+                print("text_a=",text_a)
+                print("text_b=",text_b)
+                print("label=",label)
+            examples.append(
+                InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
+        return examples
+
+
+######################################################
+#
+# One example of customerized processing script
+#
+######################################################
+
+def adversarial_yelp_round1_reader(src_dirname, src_filename):
+    labels = {'negative': '0', 'positive': '1', 'nosentiment': '2'}
+    src_filename = os.path.join(src_dirname, src_filename)
+    data = []
+    with open(src_filename) as f:
+        for line in f:
+            d = json.loads(line)
+            label = labels.get(d['gold_label'])
+            if label:
+                data.append((d['sentence'], label))
+    return data
+
+class AdvSA_Processor(DataProcessor):
+    """Processor for the AdvSA data set."""
+
+    def __init__(self):
+        """load everything into memory first"""
+
+    def get_train_examples(self, data_dir):
+        """See base class."""
+        train_data = adversarial_yelp_round1_reader(data_dir, "adversarial-sentiment-round01-train.jsonl")
+        return _create_examples(train_data, "train")
+
+    def get_dev_examples(self, data_dir):
+        """See base class."""
+        dev_data = adversarial_yelp_round1_reader(data_dir, "adversarial-sentiment-round01-dev.jsonl")
+        return _create_examples(dev_data, "dev")
+
+    def get_test_examples(self, data_dir):
+        """See base class."""
+        test_data = adversarial_yelp_round1_reader(data_dir, "adversarial-sentiment-round01-test.jsonl")
+        return _create_examples(test_data, "test")
+
+    def get_labels(self):
+        """See base class."""
+        return [0, 1, 2]
+
+    def _create_examples(self, lines, set_type, debug=True):
+        examples = []
+        for (i, line) in enumerate(lines):
+            guid = "%s-%s" % (set_type, i)
+            text_a = convert_to_unicode(str(line[0]))
+            text_b = None
+            label = int(str(line[1]))
             if i%1000==0 and debug:
                 print(i)
                 print("guid=",guid)

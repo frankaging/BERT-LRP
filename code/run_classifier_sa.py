@@ -32,7 +32,8 @@ from util.processor import (IMDb_Processor,
                             SST5_Processor,
                             SST2_Processor,
                             Yelp5_Processor,
-                            Yelp2_Processor)
+                            Yelp2_Processor,
+                            AdvSA_Processor)
 
 from util.tokenization import *
 
@@ -312,7 +313,8 @@ def Train(args):
         "SST5":SST5_Processor,
         "SST2":SST2_Processor,
         "Yelp5":Yelp5_Processor,
-        "Yelp2":Yelp2_Processor
+        "Yelp2":Yelp2_Processor,
+        "AdvSA":AdvSA_Processor
     }
 
     processor = processors[args.task_name]()
@@ -534,7 +536,8 @@ if __name__ == "__main__":
                         required=True,
                         choices=["IMDb", "SemEval",
                                  "SST2", "SST5", 
-                                 "Yelp2", "Yelp5"],
+                                 "Yelp2", "Yelp5",
+                                 "AdvSA"],
                         help="The name of the task to train.")
     parser.add_argument("--data_dir",
                         default=None,

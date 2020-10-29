@@ -236,7 +236,7 @@ class SST2_Processor(DataProcessor):
 
     def get_train_examples(self, data_dir):
         """See base class."""
-        train_data = sst_reader(data_dir, "stsa.binary.train")
+        train_data = sst_reader(data_dir, "stsa.binary.phrases.train")
         return self._create_examples(train_data, "train")
 
     def get_test_examples(self, data_dir):

@@ -252,21 +252,18 @@ def getModelOptimizerTokenizer(model_type, vocab_file, embed_file=None,
             else:
                 logger.info("retraining with saved model.")
                 model.bert.load_state_dict(torch.load(init_checkpoint, map_location='cpu'))
-        if bert_optimizer:
-            no_decay = ['bias', 'gamma', 'beta']
-            optimizer_parameters = [
-                {'params': [p for n, p in model.named_parameters() 
-                    if not any(nd in n for nd in no_decay)], 'weight_decay_rate': 0.01},
-                {'params': [p for n, p in model.named_parameters() 
-                    if any(nd in n for nd in no_decay)], 'weight_decay_rate': 0.0}
-                ]
-                
-            optimizer = BERTAdam(optimizer_parameters,
-                                lr=learning_rate,
-                                warmup=warmup_proportion,
-                                t_total=num_train_steps)
-        else:
-            optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=1e-4)
+        no_decay = ['bias', 'gamma', 'beta']
+        optimizer_parameters = [
+            {'params': [p for n, p in model.named_parameters() 
+                if not any(nd in n for nd in no_decay)], 'weight_decay_rate': 0.01},
+            {'params': [p for n, p in model.named_parameters() 
+                if any(nd in n for nd in no_decay)], 'weight_decay_rate': 0.0}
+            ]
+            
+        optimizer = BERTAdam(optimizer_parameters,
+                            lr=learning_rate,
+                            warmup=warmup_proportion,
+                            t_total=num_train_steps)
     else:
         logger.info("***** Not Support Model Type *****")
     return model, optimizer, tokenizer

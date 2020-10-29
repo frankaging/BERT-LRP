@@ -16,7 +16,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 
-from model.BiLSTM import *
 from model.BERT import *
 
 from sklearn.metrics import f1_score, accuracy_score, roc_auc_score

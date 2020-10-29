@@ -15,7 +15,7 @@ CUDA_VISIBLE_DEVICES=7,8,9 python run_classifier_sa.py \
 --seed 42
 
 # This is a template for training the first time
-CUDA_VISIBLE_DEVICES=0,1,2,3 python run_classifier_sa.py \
+CUDA_VISIBLE_DEVICES=9 python run_classifier_sa.py \
 --task_name SST3 \
 --data_dir ../data/dataset/SST/ \
 --vocab_file ../data/uncased_L-12_H-768_A-12/vocab.txt \

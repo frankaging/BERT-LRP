@@ -242,8 +242,11 @@ def getModelOptimizerTokenizer(model_type, vocab_file, embed_file=None,
                 from collections import OrderedDict
                 new_state_dict = OrderedDict()
                 for k, v in state_dict.items():
-                    name = k[7:] # remove 'module.' of dataparallel
-                    new_state_dict[name]=v
+                    if k.startswith('module.'):
+                        name = k[7:] # remove 'module.' of dataparallel
+                        new_state_dict[name]=v
+                    else:
+                        new_state_dict[k]=v
                 model.load_state_dict(new_state_dict)
             else:
                 logger.info("retraining with saved model.")

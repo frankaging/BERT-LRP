@@ -15,9 +15,9 @@ CUDA_VISIBLE_DEVICES=7,8,9 python run_classifier_sa.py \
 --seed 42
 
 # This is a template for training the first time
-CUDA_VISIBLE_DEVICES=4,5,6,7,8,9 python run_classifier_sa.py \
---task_name AdvSA \
---data_dir ../data/dataset/AdvSA/ \
+CUDA_VISIBLE_DEVICES=0,1,2,3 python run_classifier_sa.py \
+--task_name SST3 \
+--data_dir ../data/dataset/SST/ \
 --vocab_file ../data/uncased_L-12_H-768_A-12/vocab.txt \
 --bert_config_file ../data/uncased_L-12_H-768_A-12/bert_config.json \
 --model_type BERTPretrain \
@@ -28,7 +28,7 @@ CUDA_VISIBLE_DEVICES=4,5,6,7,8,9 python run_classifier_sa.py \
 --eval_batch_size 24 \
 --learning_rate 2e-5 \
 --num_train_epochs 20 \
---output_dir ../results/AdvSA/ \
+--output_dir ../results/SST3/ \
 --seed 42 \
 --init_checkpoint ../data/uncased_L-12_H-768_A-12/pytorch_model.bin
 

@@ -306,7 +306,7 @@ def Train(args):
         "SemEval":SemEval_Processor,
         "SST5":SST5_Processor,
         "SST2":SST2_Processor,
-        "SST2":SST3_Processor,
+        "SST3":SST3_Processor,
         "Yelp5":Yelp5_Processor,
         "Yelp2":Yelp2_Processor,
         "AdvSA":AdvSA_Processor

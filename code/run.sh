@@ -1,3 +1,16 @@
+# This is using hugging face transformer to baseline the pipeline
+CUDA_VISIBLE_DEVICES=3,4,5 python run_glue.py \
+--model_name_or_path bert-base-uncased \
+--task_name SST2 \
+--do_train \
+--do_eval \
+--max_seq_length 128 \
+--learning_rate 2e-5 \
+--num_train_epochs 3.0 \
+--output_dir ../results/SST2Baseline/ \
+--evaluate_during_training \
+--load_best_model_at_end
+
 # This is for transformer-like training without any pretrained model
 CUDA_VISIBLE_DEVICES=7,8,9 python run_classifier_sa.py \
 --task_name SST5 \
@@ -17,7 +30,7 @@ CUDA_VISIBLE_DEVICES=7,8,9 python run_classifier_sa.py \
 # This is a template for training the first time
 CUDA_VISIBLE_DEVICES=3,4,5 python run_classifier_sa.py \
 --task_name SST2 \
---data_dir ../data/dataset/SST2/ \
+--data_dir ../data/dataset/SST2Baseline/ \
 --vocab_file ../data/uncased_L-12_H-768_A-12/vocab.txt \
 --bert_config_file ../data/uncased_L-12_H-768_A-12/bert_config.json \
 --model_type BERTPretrain \
@@ -28,7 +41,7 @@ CUDA_VISIBLE_DEVICES=3,4,5 python run_classifier_sa.py \
 --eval_batch_size 36 \
 --learning_rate 2e-5 \
 --num_train_epochs 20 \
---output_dir ../results/SST2/ \
+--output_dir ../results/SST2Baseline/ \
 --seed 42 \
 --init_checkpoint ../data/uncased_L-12_H-768_A-12/pytorch_model.bin
 

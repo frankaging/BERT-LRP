@@ -241,7 +241,7 @@ class BERTEmbeddings(nn.Module):
         embeddings = words_embeddings + position_embeddings + token_type_embeddings
         embeddings = self.LayerNorm(embeddings)
         embeddings = self.dropout(embeddings)
-        return words_embeddings
+        return embeddings
 
     def backward_lrp(self, relevance_score):
         word_embeddings_out = func_activations['model.bert.embeddings.word_embeddings']

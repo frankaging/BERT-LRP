@@ -278,6 +278,8 @@ class SST3_Processor(DataProcessor):
             _class = 1
         elif rate >= 0.4 and rate <= 0.6:
             _class = 2
+        else:
+            _class = -1 # we exclude these cases
         return _class
 
     def _create_examples(self, lines, set_type, debug=True):

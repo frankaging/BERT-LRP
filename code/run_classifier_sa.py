@@ -158,7 +158,8 @@ def getModelOptimizerTokenizer(model_type, vocab_file, embed_file=None,
                                num_train_steps=None,
                                learning_rate=None,
                                base_learning_rate=None,
-                               warmup_proportion=None):
+                               warmup_proportion=None,
+                               bert_optimizer=False):
     if embed_file is not None:
         # in case pretrain embeddings
         embeddings = pickle.load(open(embed_file, 'rb'))
@@ -251,18 +252,21 @@ def getModelOptimizerTokenizer(model_type, vocab_file, embed_file=None,
             else:
                 logger.info("retraining with saved model.")
                 model.bert.load_state_dict(torch.load(init_checkpoint, map_location='cpu'))
-        no_decay = ['bias', 'gamma', 'beta']
-        optimizer_parameters = [
-            {'params': [p for n, p in model.named_parameters() 
-                if not any(nd in n for nd in no_decay)], 'weight_decay_rate': 0.01},
-            {'params': [p for n, p in model.named_parameters() 
-                if any(nd in n for nd in no_decay)], 'weight_decay_rate': 0.0}
-            ]
-            
-        optimizer = BERTAdam(optimizer_parameters,
-                            lr=learning_rate,
-                            warmup=warmup_proportion,
-                            t_total=num_train_steps)
+        if bert_optimizer:
+            no_decay = ['bias', 'gamma', 'beta']
+            optimizer_parameters = [
+                {'params': [p for n, p in model.named_parameters() 
+                    if not any(nd in n for nd in no_decay)], 'weight_decay_rate': 0.01},
+                {'params': [p for n, p in model.named_parameters() 
+                    if any(nd in n for nd in no_decay)], 'weight_decay_rate': 0.0}
+                ]
+                
+            optimizer = BERTAdam(optimizer_parameters,
+                                lr=learning_rate,
+                                warmup=warmup_proportion,
+                                t_total=num_train_steps)
+        else:
+            optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=1e-4)
     else:
         logger.info("***** Not Support Model Type *****")
     return model, optimizer, tokenizer

@@ -24,9 +24,9 @@ CUDA_VISIBLE_DEVICES=6 python run_classifier_sa.py \
 --eval_test \
 --do_lower_case \
 --max_seq_length 512 \
---train_batch_size 12 \
---eval_batch_size 12 \
---learning_rate 2e-5 \
+--train_batch_size 16 \
+--eval_batch_size 16 \
+--learning_rate 5e-5 \
 --num_train_epochs 20 \
 --output_dir ../results/SST2/ \
 --seed 42 \

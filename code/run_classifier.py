@@ -303,7 +303,8 @@ def Train(args):
         "SST3":SST3_Processor,
         "Yelp5":Yelp5_Processor,
         "Yelp2":Yelp2_Processor,
-        "AdvSA":AdvSA_Processor
+        "AdvSA":AdvSA_Processor,
+        "R0Train":R0Train_Processor
     }
 
     processor = processors[args.task_name]()
@@ -525,7 +526,7 @@ if __name__ == "__main__":
                         choices=["IMDb", "SemEval",
                                  "SST2", "SST5", "SST3",
                                  "Yelp2", "Yelp5",
-                                 "AdvSA"],
+                                 "AdvSA", "R0Train"],
                         help="The name of the task to train.")
     parser.add_argument("--data_dir",
                         default=None,

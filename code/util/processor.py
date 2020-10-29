@@ -459,3 +459,45 @@ class AdvSA_Processor(DataProcessor):
             examples.append(
                 InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
         return examples
+
+class R0Train_Processor(DataProcessor):
+    """Processor for the AdvSA data set."""
+
+    def __init__(self):
+        """load everything into memory first"""
+
+    def get_train_examples(self, data_dir):
+        """See base class."""
+        train_data = pd.read_csv(os.path.join(data_dir, "r0train-ternary-small.tsv"),sep="\t",skiprows=0).values
+        return self._create_examples(train_data, "train")
+
+    def get_big_train_examples(self, data_dir):
+        """See base class."""
+        train_data = pd.read_csv(os.path.join(data_dir, "r0train-ternary-full.tsv"),sep="\t",skiprows=0).values
+        return self._create_examples(train_data, "train")
+
+    def get_test_examples(self, data_dir):
+        """See base class."""
+        test_data = pd.read_csv(os.path.join(data_dir, "sst-dev-ternary.tsv"),sep="\t",skiprows=0).values
+        return self._create_examples(test_data, "test")
+
+    def get_labels(self):
+        """See base class."""
+        return [0, 1, 2] # 0: very negative ->  4: very positive
+
+    def _create_examples(self, lines, set_type, debug=True):
+        examples = []
+        for (i, line) in enumerate(lines):
+            guid = "%s-%s" % (set_type, i)
+            text_a = convert_to_unicode(str(line[0]))
+            text_b = None
+            label = int(line[1])
+            if i%50000==0 and debug:
+                print(i)
+                print("guid=",guid)
+                print("text_a=",text_a)
+                print("text_b=",text_b)
+                print("label=",label)
+            examples.append(
+                InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
+        return examples

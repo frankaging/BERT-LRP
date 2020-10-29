@@ -409,7 +409,6 @@ def Train(args):
     eval_freq_train = 100
     grads_in_norm_list = []
     for _ in trange(int(args.num_train_epochs), desc="Epoch"):
-        model.to(device)
         tr_loss = 0
         nb_tr_examples, nb_tr_steps = 0, 0
         if args.init_checkpoint is None or \

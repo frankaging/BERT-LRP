@@ -11,6 +11,8 @@ import pickle
 
 from util.tokenization import *
 
+import re
+import sys
 
 class InputExample(object):
     """A single training/test example for simple sequence classification."""
@@ -193,6 +195,39 @@ class SST5_Processor(DataProcessor):
                 InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
         return examples
 
+def clean_str(string):
+    """
+    Tokenization/string cleaning for all datasets except for SST.
+    """
+    string = re.sub(r"\. \. \.", "\.", string)
+    string = re.sub(r"[^A-Za-z0-9(),!?\'\`\.]", " ", string)
+    # string = re.sub(r"[^A-Za-z0-9(),!?\'\`]", " ", string)
+    string = re.sub(r"\'s", " \'s", string)
+    string = re.sub(r"\'ve", " \'ve", string)
+    string = re.sub(r"n\'t", " n\'t", string)
+    string = re.sub(r"\'re", " \'re", string)
+    string = re.sub(r"\'d", " \'d", string)
+    string = re.sub(r"\'ll", " \'ll", string)
+    string = re.sub(r",", " , ", string)
+    string = re.sub(r"!", " ! ", string)
+    string = re.sub(r"\(", " ( ", string)
+    string = re.sub(r"\)", " ) ", string)
+    string = re.sub(r"\?", " ? ", string)
+    string = re.sub(r"\s{2,}", " ", string)
+    return string.strip().lower()
+
+def sst_reader(src_dirname, src_filename):
+    src_filename = os.path.join(src_dirname, src_filename)
+    data = []
+    with open(src_filename) as f:
+        for line in f:
+            div = line.index(' ')
+            sentence = clean_str(line[div+1:])
+            label = line[:div]
+            if label:
+                data.append((sentence, label))
+    return data
+
 class SST2_Processor(DataProcessor):
     """Processor for the SST data set."""
 
@@ -201,31 +236,22 @@ class SST2_Processor(DataProcessor):
 
     def get_train_examples(self, data_dir):
         """See base class."""
-        train_data = pd.read_csv(os.path.join(data_dir, "train_SST.csv"),sep=",").values
+        train_data = sst_reader(data_dir, "stsa.binary.train")
         return self._create_examples(train_data, "train")
 
     def get_test_examples(self, data_dir):
         """See base class."""
-        test_data = pd.read_csv(os.path.join(data_dir, "test_SST.csv"),sep=",").values
+        test_data = sst_reader(data_dir, "stsa.binary.test")
         return self._create_examples(test_data, "test")
 
     def get_dev_examples(self, data_dir):
         """See base class."""
-        test_data = pd.read_csv(os.path.join(data_dir, "dev_SST.csv"),sep=",").values
-        return self._create_examples(test_data, "dev")
+        dev_data = sst_reader(data_dir, "stsa.binary.dev")
+        return self._create_examples(dev_data, "dev")
 
     def get_labels(self):
         """See base class."""
         return [0, 1] # 0: very negative ->  4: very positive
-
-    def generate_class(self, rate):
-        if rate >= 0.0 and rate <= 0.4:
-            _class = 0
-        elif rate > 0.6 and rate <= 1.0:
-            _class = 1
-        else:
-            _class = -1
-        return _class
 
     def _create_examples(self, lines, set_type, debug=True):
         examples = []
@@ -233,9 +259,7 @@ class SST2_Processor(DataProcessor):
             guid = "%s-%s" % (set_type, i)
             text_a = convert_to_unicode(str(line[0]))
             text_b = None
-            label = self.generate_class(float(str(line[1])))
-            if label == -1:
-                continue
+            label = int(line[1])
             if i%1000==0 and debug:
                 print(i)
                 print("guid=",guid)

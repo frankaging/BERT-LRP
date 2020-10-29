@@ -27,13 +27,7 @@ from torch.utils.data.sampler import RandomSampler, SequentialSampler
 from tqdm import tqdm, trange
 
 from util.optimization import BERTAdam
-from util.processor import (IMDb_Processor,
-                            SemEval_Processor,
-                            SST5_Processor,
-                            SST2_Processor,
-                            Yelp5_Processor,
-                            Yelp2_Processor,
-                            AdvSA_Processor)
+from util.processor import *
 
 from util.tokenization import *
 
@@ -312,6 +306,7 @@ def Train(args):
         "SemEval":SemEval_Processor,
         "SST5":SST5_Processor,
         "SST2":SST2_Processor,
+        "SST2":SST3_Processor,
         "Yelp5":Yelp5_Processor,
         "Yelp2":Yelp2_Processor,
         "AdvSA":AdvSA_Processor
@@ -535,7 +530,7 @@ if __name__ == "__main__":
                         type=str,
                         required=True,
                         choices=["IMDb", "SemEval",
-                                 "SST2", "SST5", 
+                                 "SST2", "SST5", "SST3",
                                  "Yelp2", "Yelp5",
                                  "AdvSA"],
                         help="The name of the task to train.")

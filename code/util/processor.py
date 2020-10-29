@@ -246,6 +246,59 @@ class SST2_Processor(DataProcessor):
                 InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
         return examples
 
+class SST3_Processor(DataProcessor):
+    """Processor for the SST data set."""
+
+    def __init__(self):
+        """load everything into memory first"""
+
+    def get_train_examples(self, data_dir):
+        """See base class."""
+        train_data = pd.read_csv(os.path.join(data_dir, "train_SST.csv"),sep=",").values
+        return self._create_examples(train_data, "train")
+
+    def get_test_examples(self, data_dir):
+        """See base class."""
+        test_data = pd.read_csv(os.path.join(data_dir, "test_SST.csv"),sep=",").values
+        return self._create_examples(test_data, "test")
+
+    def get_dev_examples(self, data_dir):
+        """See base class."""
+        test_data = pd.read_csv(os.path.join(data_dir, "dev_SST.csv"),sep=",").values
+        return self._create_examples(test_data, "dev")
+
+    def get_labels(self):
+        """See base class."""
+        return [0, 1, 2] # 2: non-sentiment cases
+
+    def generate_class(self, rate):
+        if rate >= 0.0 and rate <= 0.2:
+            _class = 0
+        elif rate >= 0.8 and rate <= 1.0:
+            _class = 1
+        elif rate >= 0.4 and rate <= 0.6:
+            _class = 2
+        return _class
+
+    def _create_examples(self, lines, set_type, debug=True):
+        examples = []
+        for (i, line) in enumerate(lines):
+            guid = "%s-%s" % (set_type, i)
+            text_a = convert_to_unicode(str(line[0]))
+            text_b = None
+            label = self.generate_class(float(str(line[1])))
+            if label == -1:
+                continue
+            if i%1000==0 and debug:
+                print(i)
+                print("guid=",guid)
+                print("text_a=",text_a)
+                print("text_b=",text_b)
+                print("label=",label)
+            examples.append(
+                InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
+        return examples
+
 class Yelp2_Processor(DataProcessor):
     """Processor for the Yelp2 data set."""
 

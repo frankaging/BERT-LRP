@@ -164,16 +164,6 @@ def getModelOptimizerTokenizer(model_type, vocab_file, embed_file=None,
         # in case pretrain embeddings
         embeddings = pickle.load(open(embed_file, 'rb'))
 
-    if model_type == "BiLSTM":
-        logger.info("model = BiLSTM")
-        tokenizer = WordLevelTokenizer(vocab_file=vocab_file)
-        model = BiLSTM(pretrain_embeddings=embeddings, freeze=True)
-        optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=1e-4)
-        # if pretrain, we will load here
-        if init_checkpoint is not None:
-            logger.info("retraining with saved model.")
-            checkpoint = torch.load(init_checkpoint, map_location='cpu')
-            model.load_state_dict(checkpoint)
     if model_type == "BERT":
         logger.info("model = BERT (Transformer Like)")
         bert_config = BertConfig(

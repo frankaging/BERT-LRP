@@ -236,17 +236,17 @@ class SST2_Processor(DataProcessor):
 
     def get_train_examples(self, data_dir):
         """See base class."""
-        train_data = pd.read_csv(os.path.join(data_dir, "train.tsv"),sep="\t",header=None).values
+        train_data = pd.read_csv(os.path.join(data_dir, "train.tsv"),sep="\t",skiprows=1).values
         return self._create_examples(train_data, "train")
 
     def get_test_examples(self, data_dir):
         """See base class."""
-        test_data = pd.read_csv(os.path.join(data_dir, "dev.tsv"),sep="\t",header=None).values
+        test_data = pd.read_csv(os.path.join(data_dir, "dev.tsv"),sep="\t",skiprows=1).values
         return self._create_examples(test_data, "test")
 
     def get_dev_examples(self, data_dir):
         """See base class."""
-        test_data = pd.read_csv(os.path.join(data_dir, "dev.tsv"),sep="\t",header=None).values
+        test_data = pd.read_csv(os.path.join(data_dir, "dev.tsv"),sep="\t",skiprows=1).values
         return self._create_examples(test_data, "dev")
 
     def get_labels(self):

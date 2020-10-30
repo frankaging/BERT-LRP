@@ -1,4 +1,4 @@
-# Auto-Relevance: Automatic Relevance Scores on Tokens and A Multi-GPU BERT Fine-tune Pipeline
+# Auto-Relevance: Automatic Relevance Scores on Tokens for BERT with A Multi-GPU Fine-tune Pipeline
 Regular BERT training is for accuracy, but if you are interested in understanding why BERT made that decision, and which tokens contribute more towards that model decision, this repo will help you understand more about the BERT model. If you want to know the decision of your trained BERT, simple import our BERT model, and train with a gradient hook enabled. Your attribution scores will be calculated with a simple ``backward()`` call.
 
 ### Install Requirements

@@ -15,7 +15,7 @@ CUDA_VISIBLE_DEVICES=7,8,9 python run_classifier.py \
 --seed 42
 
 # This is a template for training the first time
-CUDA_VISIBLE_DEVICES=4,9 python run_classifier.py \
+CUDA_VISIBLE_DEVICES=0,2 python run_classifier.py \
 --task_name R0Train \
 --data_dir ../data/dataset/R0Train/ \
 --vocab_file ../data/uncased_L-12_H-768_A-12/vocab.txt \

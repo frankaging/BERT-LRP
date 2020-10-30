@@ -172,7 +172,8 @@ def getModelOptimizerTokenizer(model_type, vocab_file, embed_file=None,
                                learning_rate=None,
                                base_learning_rate=None,
                                warmup_proportion=None,
-                               bert_optimizer=False):
+                               bert_optimizer=False,
+                               init_lrp=False):
     if embed_file is not None:
         # in case pretrain embeddings
         embeddings = pickle.load(open(embed_file, 'rb'))
@@ -237,7 +238,8 @@ def getModelOptimizerTokenizer(model_type, vocab_file, embed_file=None,
         # vocab size is shrinked.
         bert_config.vocab_size = len(tokenizer.vocab)
         # model and optimizer
-        model = BertForSequenceClassification(bert_config, len(label_list))
+        model = BertForSequenceClassification(bert_config, len(label_list),
+                                              init_lrp=init_lrp)
 
         if init_checkpoint is not None:
             if "checkpoint" in init_checkpoint:

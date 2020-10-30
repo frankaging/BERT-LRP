@@ -244,9 +244,7 @@ class BERTEmbeddings(nn.Module):
         return embeddings
 
     def backward_lrp(self, relevance_score):
-        word_embeddings_out = func_activations['model.bert.embeddings.word_embeddings']
-        embeddings_out = func_activations['model.bert.embeddings']
-        relevance_score = l_lap_grad(embeddings_out, word_embeddings_out, relevance_score)
+        # we use the whole embedding as its units
         return relevance_score
 
 class BERTSelfAttention(nn.Module):
@@ -640,8 +638,7 @@ class BertForSequenceClassification(nn.Module):
 
     def forward(self, input_ids, token_type_ids, attention_mask, seq_lens,
                 device=None, labels=None):
-        _, pooled_output, all_encoder_attention_scores, embedding_output \
-             = self.bert(input_ids, token_type_ids, attention_mask)
+        _, pooled_output, _, _ = self.bert(input_ids, token_type_ids, attention_mask)
         pooled_output = self.dropout(pooled_output)
         logits = self.classifier(pooled_output)
 

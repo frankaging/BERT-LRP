@@ -27,7 +27,7 @@ CUDA_VISIBLE_DEVICES=0,2 python run_classifier.py \
 --train_batch_size 24 \
 --eval_batch_size 24 \
 --learning_rate 2e-5 \
---num_train_epochs 20 \
+--num_train_epochs 3 \
 --output_dir ../results/SST5/ \
 --seed 42 \
 --init_checkpoint ../data/uncased_L-12_H-768_A-12/pytorch_model.bin

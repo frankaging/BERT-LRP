@@ -179,17 +179,22 @@ class SST5_Processor(DataProcessor):
 
     def get_train_examples(self, data_dir):
         """See base class."""
-        train_data = sst_reader(data_dir, "train_SST.csv")
+        train_data = sst_reader(data_dir, "stsa.fine.phrases.train")
+        return self._create_examples(train_data, "train")
+
+    def get_train_small_examples(self, data_dir):
+        """See base class."""
+        train_data = sst_reader(data_dir, "stsa.fine.train")
         return self._create_examples(train_data, "train")
 
     def get_test_examples(self, data_dir):
         """See base class."""
-        test_data = sst_reader(data_dir, "test_SST.csv")
+        test_data = sst_reader(data_dir, "stsa.fine.test")
         return self._create_examples(test_data, "test")
 
     def get_dev_examples(self, data_dir):
         """See base class."""
-        dev_data = sst_reader(data_dir, "dev_SST.csv")
+        dev_data = sst_reader(data_dir, "stsa.fine.dev")
         return self._create_examples(dev_data, "dev")
 
     def get_labels(self):

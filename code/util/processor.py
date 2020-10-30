@@ -436,7 +436,7 @@ class AdvSA_Processor(DataProcessor):
 
     def get_test_examples(self, data_dir):
         """See base class."""
-        test_data = adversarial_yelp_round1_reader(data_dir, "adversarial-sentiment-round01-test.jsonl")
+        test_data = adversarial_yelp_round1_reader(data_dir, "adversarial-sentiment-round01-dev.jsonl")
         return self._create_examples(test_data, "test")
 
     def get_labels(self):

@@ -179,7 +179,7 @@ class SST5_Processor(DataProcessor):
 
     def get_train_examples(self, data_dir):
         """See base class."""
-        train_data = sst_reader(data_dir, "stsa.fine.phrases.train")
+        train_data = sst_reader(data_dir, "stsa.fine.train")
         return self._create_examples(train_data, "train")
 
     def get_train_small_examples(self, data_dir):

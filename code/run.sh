@@ -15,20 +15,20 @@ CUDA_VISIBLE_DEVICES=7,8,9 python run_classifier.py \
 --seed 42
 
 # This is a template for training the first time
-CUDA_VISIBLE_DEVICES=0,2 python run_classifier.py \
---task_name SST5 \
---data_dir ../data/dataset/SST5/ \
+CUDA_VISIBLE_DEVICES=4,9 python run_classifier.py \
+--task_name R0Train \
+--data_dir ../data/dataset/R0Train/ \
 --vocab_file ../data/uncased_L-12_H-768_A-12/vocab.txt \
 --bert_config_file ../data/uncased_L-12_H-768_A-12/bert_config.json \
 --model_type BERTPretrain \
 --eval_test \
 --do_lower_case \
 --max_seq_length 512 \
---train_batch_size 24 \
---eval_batch_size 24 \
+--train_batch_size 8 \
+--eval_batch_size 8 \
 --learning_rate 2e-5 \
 --num_train_epochs 3 \
---output_dir ../results/SST5/ \
+--output_dir ../results/R0Train/ \
 --seed 42 \
 --init_checkpoint ../data/uncased_L-12_H-768_A-12/pytorch_model.bin
 

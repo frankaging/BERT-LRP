@@ -38,6 +38,20 @@ logging.basicConfig(format = '%(asctime)s - %(levelname)s - %(name)s -   %(messa
                     level = logging.INFO)
 logger = logging.getLogger(__name__)
 
+
+# prepare dataloaders
+processors = {
+    "IMDb":IMDb_Processor,
+    "SemEval":SemEval_Processor,
+    "SST5":SST5_Processor,
+    "SST2":SST2_Processor,
+    "SST3":SST3_Processor,
+    "Yelp5":Yelp5_Processor,
+    "Yelp2":Yelp2_Processor,
+    "AdvSA":AdvSA_Processor,
+    "R0Train":R0Train_Processor
+}
+
 class InputFeatures(object):
     """A single set of features of data."""
 
@@ -292,19 +306,6 @@ def Train(args):
     if os.path.exists(args.output_dir) and os.listdir(args.output_dir):
         raise ValueError("Output directory ({}) already exists and is not empty.".format(args.output_dir))
     os.makedirs(args.output_dir, exist_ok=True)
-
-    # prepare dataloaders
-    processors = {
-        "IMDb":IMDb_Processor,
-        "SemEval":SemEval_Processor,
-        "SST5":SST5_Processor,
-        "SST2":SST2_Processor,
-        "SST3":SST3_Processor,
-        "Yelp5":Yelp5_Processor,
-        "Yelp2":Yelp2_Processor,
-        "AdvSA":AdvSA_Processor,
-        "R0Train":R0Train_Processor
-    }
 
     processor = processors[args.task_name]()
     label_list = processor.get_labels()

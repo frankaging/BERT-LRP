@@ -138,63 +138,6 @@ class SemEval_Processor(DataProcessor):
                 InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
         return examples
 
-class SST5_Processor(DataProcessor):
-    """Processor for the SST data set."""
-
-    def __init__(self):
-        """load everything into memory first"""
-
-    def get_train_examples(self, data_dir):
-        """See base class."""
-        train_data = pd.read_csv(os.path.join(data_dir, "train_SST.csv"),sep=",").values
-        return self._create_examples(train_data, "train")
-
-    def get_test_examples(self, data_dir):
-        """See base class."""
-        test_data = pd.read_csv(os.path.join(data_dir, "test_SST.csv"),sep=",").values
-        return self._create_examples(test_data, "test")
-
-    def get_dev_examples(self, data_dir):
-        """See base class."""
-        test_data = pd.read_csv(os.path.join(data_dir, "dev_SST.csv"),sep=",").values
-        return self._create_examples(test_data, "dev")
-
-    def get_labels(self):
-        """See base class."""
-        return [0, 1, 2, 3, 4] # 0: very negative ->  4: very positive
-
-    def generate_class(self, rate):
-        if rate >= 0.0 and rate <= 0.2:
-            _class = 0
-        elif rate > 0.2 and rate <= 0.4:
-            _class = 1
-        elif rate > 0.4 and rate <= 0.6:
-            _class = 2
-        elif rate > 0.6 and rate <= 0.8:
-            _class = 3
-        elif rate > 0.8 and rate <= 1.0:
-            _class = 4
-        else:
-            assert(False)
-        return _class
-
-    def _create_examples(self, lines, set_type, debug=True):
-        examples = []
-        for (i, line) in enumerate(lines):
-            guid = "%s-%s" % (set_type, i)
-            text_a = convert_to_unicode(str(line[0]))
-            text_b = None
-            label = self.generate_class(float(str(line[1])))
-            if i%1000==0 and debug:
-                print(i)
-                print("guid=",guid)
-                print("text_a=",text_a)
-                print("text_b=",text_b)
-                print("label=",label)
-            examples.append(
-                InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
-        return examples
-
 def clean_str(string):
     """
     Tokenization/string cleaning for all datasets except for SST.
@@ -227,6 +170,48 @@ def sst_reader(src_dirname, src_filename):
             if label:
                 data.append((sentence, label))
     return data
+
+class SST5_Processor(DataProcessor):
+    """Processor for the SST data set."""
+
+    def __init__(self):
+        """load everything into memory first"""
+
+    def get_train_examples(self, data_dir):
+        """See base class."""
+        train_data = sst_reader(data_dir, "train_SST.csv")
+        return self._create_examples(train_data, "train")
+
+    def get_test_examples(self, data_dir):
+        """See base class."""
+        test_data = sst_reader(data_dir, "test_SST.csv")
+        return self._create_examples(test_data, "test")
+
+    def get_dev_examples(self, data_dir):
+        """See base class."""
+        dev_data = sst_reader(data_dir, "dev_SST.csv")
+        return self._create_examples(dev_data, "dev")
+
+    def get_labels(self):
+        """See base class."""
+        return [0, 1, 2, 3, 4] # 0: very negative ->  4: very positive
+
+    def _create_examples(self, lines, set_type, debug=True):
+        examples = []
+        for (i, line) in enumerate(lines):
+            guid = "%s-%s" % (set_type, i)
+            text_a = convert_to_unicode(str(line[0]))
+            text_b = None
+            label = int(line[1])
+            if i%1000==0 and debug:
+                print(i)
+                print("guid=",guid)
+                print("text_a=",text_a)
+                print("text_b=",text_b)
+                print("label=",label)
+            examples.append(
+                InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
+        return examples
 
 class SST2_Processor(DataProcessor):
     """Processor for the SST data set."""

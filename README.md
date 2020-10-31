@@ -4,11 +4,21 @@ Regular BERT training is for accuracy, but if you are interested in understandin
 ### Install Requirements
 You will have to clone this repo, and install all the dependencies.
 ```bash
-cd BERT_LRP/
+cd BERT_LRP/code/
 pip install -r requirements.txt
 ```
 
-### BERT Model
+### Download Pretrained BERT Model
+You will have to download pretrained BERT model in order to execute the fine-tune pipeline. We recommand to use models provided by the official release on BERT from [BERT-Base (Google's pre-trained models)](https://github.com/google-research/bert). Note that their model is in tensorflow format. To convert tensorflow model to pytorch model, you can use the helper script to do that. For example,
+```bash
+cd BERT_LRP/code/
+python convert_tf_checkpoint_to_pytorch.py \
+--tf_checkpoint_path uncased_L-12_H-768_A-12/bert_model.ckpt \
+--bert_config_file uncased_L-12_H-768_A-12/bert_config.json \
+--pytorch_dump_path uncased_L-12_H-768_A-12/pytorch_model.bin
+```
+
+### BERT Model and Pretrain
 Our BERT model is adapted from [huggingface](https://github.com/huggingface/transformers) BERT model for text classification. If you want to take a look at the original model please search for [BertForSequenceClassification](https://github.com/huggingface/transformers/blob/master/src/transformers/modeling_bert.py). If you want to fine-tune or train a BERT classifier, you can either use their pipeline line or ours. Ours is tested against theirs before publishing. It is bug-free. To train a model, you can do something like this,
 ```bash
 cd code/

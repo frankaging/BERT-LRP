@@ -2,7 +2,7 @@
 Regular BERT training is for accuracy, but if you are interested in understanding why BERT made that decision, and which tokens contribute more towards that model decision, this repo will help you understand more about the BERT model. If you want to know the decision of your trained BERT, simple import our BERT model, and train with a gradient hook enabled. Your attribution scores will be calculated with a simple ``backward()`` call.
 
 ### Install Requirements
-You will have to clone this repo, and install all the dependencies.
+You will have to clone this repo, and install all the dependencies. You can skip this step if you have torch and cuda installed. That is all you need. You can also mannually install these without going through this installation headache that ``requirements.txt`` may give you.
 ```bash
 cd BERT_LRP/code/
 pip install -r requirements.txt

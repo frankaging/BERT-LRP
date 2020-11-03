@@ -1,6 +1,12 @@
 results/
 .DS_Store
-data/
+datasets/
+*DS_Store
+results/
+models/BERT-Google/*.bin
+models/BERT-Google/*.pt
+models/BERT-Google/*.ckpt.*
+models/uncased_L-12_H-768_A-12/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

@@ -91,7 +91,7 @@ class IMDb_Processor(DataProcessor):
             text_a = convert_to_unicode(str(line[0]))
             text_b = None
             label = int(str(line[1]))
-            if i%1000==0 and debug:
+            if i==0 and debug:
                 print(i)
                 print("guid=",guid)
                 print("text_a=",text_a)
@@ -128,7 +128,7 @@ class SemEval_Processor(DataProcessor):
             text_a = convert_to_unicode(str(line[0]))
             text_b = None
             label = int(str(line[1]))
-            if i%1000==0 and debug:
+            if i==0 and debug:
                 print(i)
                 print("guid=",guid)
                 print("text_a=",text_a)
@@ -203,7 +203,7 @@ class SST5_Processor(DataProcessor):
             text_a = convert_to_unicode(str(line[0]))
             text_b = None
             label = int(line[1])
-            if i%1000==0 and debug:
+            if i==0 and debug:
                 print(i)
                 print("guid=",guid)
                 print("text_a=",text_a)
@@ -240,7 +240,7 @@ class Yelp5_Processor(DataProcessor):
             text_a = convert_to_unicode(str(line[0]))
             text_b = None
             label = int(str(line[1])) - 1
-            if i%1000==0 and debug:
+            if i==0 and debug:
                 print(i)
                 print("guid=",guid)
                 print("text_a=",text_a)

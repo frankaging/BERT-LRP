@@ -41,7 +41,7 @@ logger = logging.getLogger(__name__)
 
 # prepare dataloaders
 processors = {
-    "SST2" : SST2_Processor
+    "SST5" : SST5_Processor
 }
 
 class InputFeatures(object):

@@ -162,7 +162,8 @@ def load_model_setups(vocab_file, bert_config_file,
                         num_train_steps,
                         do_lower_case=True, 
                         learning_rate=2e-5,
-                        warmup_proportion=0.1):
+                        warmup_proportion=0.1,
+                        init_lrp=False):
     logger.info("model = BERT")
     if bert_config_file is not None:
         bert_config = BertConfig.from_json_file(bert_config_file)
@@ -188,7 +189,7 @@ def load_model_setups(vocab_file, bert_config_file,
     # vocab size is shrinked.
     bert_config.vocab_size = len(tokenizer.vocab)
     # model and optimizer
-    model = BertForSequenceClassification(bert_config, len(label_list))
+    model = BertForSequenceClassification(bert_config, len(label_list), init_lrp=init_lrp)
     if init_checkpoint is None:
         err_msg = "Error: model have to be based on a pretrained model"
         logger.warning(err_msg)
@@ -396,12 +397,99 @@ def evaluate(test_dataloader, model, device, n_gpu, nb_tr_steps, tr_loss, epoch,
 
     # save for each time point
     if args.eval_test and args.output_dir:
-        torch.save(model.state_dict(), args.output_dir + "checkpoint_" + str(global_step) + ".bin")
+        # ahh! we don't want to save this anymore, this is too costly!
+        # torch.save(model.state_dict(), args.output_dir + "checkpoint_" + str(global_step) + ".bin")
         if test_accuracy > global_best_acc:
             torch.save(model.state_dict(), args.output_dir + "best_checkpoint.bin")
             global_best_acc = test_accuracy
 
     return global_best_acc
+
+def evaluate_with_hooks(test_dataloader, model, device, label_list):
+    # we did not exclude gradients, for attribution methods
+    model.eval() # this line will deactivate dropouts
+    test_loss, test_accuracy = 0, 0
+    nb_test_steps, nb_test_examples = 0, 0
+    pred_logits = []
+    actual = []
+
+    lrp_scores = []
+    inputs_ids = []
+    seqs_lens = []
+
+    # we don't need gradient in this case.
+    for _, batch in enumerate(tqdm(test_dataloader, desc="Iteration")):
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        input_ids, input_mask, segment_ids, label_ids, seq_lens = batch
+        # truncate to save space and computing resource
+        max_seq_lens = max(seq_lens)[0]
+        input_ids = input_ids[:,:max_seq_lens]
+        input_mask = input_mask[:,:max_seq_lens]
+        segment_ids = segment_ids[:,:max_seq_lens]
+
+        input_ids = input_ids.to(device)
+        input_mask = input_mask.to(device)
+        segment_ids = segment_ids.to(device)
+        label_ids = label_ids.to(device)
+        seq_lens = seq_lens.to(device)
+
+        # intentially with gradient
+        tmp_test_loss, logits = \
+            model(input_ids, segment_ids, input_mask, seq_lens,
+                    device=device, labels=label_ids)
+
+        # for lrp
+        LRP_class = len(label_list) - 1
+        Rout_mask = torch.zeros((input_ids.shape[0], len(label_list))).to(device)
+        Rout_mask[:, LRP_class] = 1.0
+        relevance_score = logits*Rout_mask
+        lrp_score = model.backward_lrp(relevance_score).sum(dim=-1).cpu().data
+        input_ids = input_ids.cpu().data
+        seq_lens = seq_lens.cpu().data
+        lrp_scores.append(lrp_score)
+        inputs_ids.append(input_ids)
+        seqs_lens.append(seq_lens)
+        
+        # for gradient
+        
+        # for attention only tracing
+        
+        
+        logits = F.softmax(logits, dim=-1)
+        logits = logits.detach().cpu().numpy()
+        pred_logits.append(logits)
+        label_ids = label_ids.to('cpu').numpy()
+        actual.append(label_ids)
+        outputs = np.argmax(logits, axis=1)
+        tmp_test_accuracy=np.sum(outputs == label_ids)
+
+        test_loss += tmp_test_loss.mean().item()
+        test_accuracy += tmp_test_accuracy
+
+        nb_test_examples += input_ids.size(0)
+        nb_test_steps += 1
+        
+    test_loss = test_loss / nb_test_steps
+    test_accuracy = test_accuracy / nb_test_examples
+
+    result = collections.OrderedDict()
+    result = {'test_loss': test_loss,
+                str(len(label_list))+ '-class test_accuracy': test_accuracy}
+    logger.info("***** Eval results *****")
+    for key in result.keys():
+        logger.info("  %s = %s\n", key, str(result[key]))
+    # get predictions needed for evaluation
+    pred_logits = np.concatenate(pred_logits, axis=0)
+    actual = np.concatenate(actual, axis=0)
+    pred_label = np.argmax(pred_logits, axis=-1)
+
+    lrp_state_dict = dict()
+    lrp_state_dict["lrp_scores"] = lrp_scores
+    lrp_state_dict["inputs_ids"] = inputs_ids
+    lrp_state_dict["seqs_lens"] = seqs_lens
+    logger.info("***** Finish LRP *****")
+
 
 def data_and_model_loader(device, n_gpu, args):
     processor = processors[args.task_name]()

@@ -419,8 +419,6 @@ def evaluate_with_hooks(test_dataloader, model, device, label_list):
 
     # we don't need gradient in this case.
     for _, batch in enumerate(tqdm(test_dataloader, desc="Iteration")):
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()
         input_ids, input_mask, segment_ids, label_ids, seq_lens = batch
         # truncate to save space and computing resource
         max_seq_lens = max(seq_lens)[0]

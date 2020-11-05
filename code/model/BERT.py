@@ -638,20 +638,26 @@ class BertForSequenceClassification(nn.Module):
 
     def forward(self, input_ids, token_type_ids, attention_mask, seq_lens,
                 device=None, labels=None):
-        _, pooled_output, _, _ = self.bert(input_ids, token_type_ids, attention_mask)
+        _, pooled_output, all_encoder_attention_scores, embedding_output = self.bert(input_ids, token_type_ids, attention_mask)
         pooled_output = self.dropout(pooled_output)
         logits = self.classifier(pooled_output)
 
         if labels is not None:
             loss_fct = CrossEntropyLoss()
             loss = loss_fct(logits, labels)
-            return loss, logits
+            return loss, logits, all_encoder_attention_scores, embedding_output
         else:
             return logits
 
     def backward_lrp(self, relevance_score):
-        query_in = func_inputs['model.classifier'][0]
-        query_out = func_activations['model.classifier']
-        relevance_score = l_lap_grad(query_out, query_in, relevance_score)
+        classifier_in = func_inputs['model.classifier'][0]
+        classifier_out = func_activations['model.classifier']
+        relevance_score = l_lap_grad(classifier_out, classifier_in, relevance_score)
         relevance_score = self.bert.backward_lrp(relevance_score)
         return relevance_score
+
+    def backward_gradient(self, sensitivity_grads):
+        classifier_out = func_activations['model.classifier']
+        embedding_output = func_activations['model.bert.embeddings']
+        sensitivity_grads = torch.autograd.grad(classifier_out, embedding_output, grad_outputs=sensitivity_grads)[0]
+        return sensitivity_grads

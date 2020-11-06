@@ -250,7 +250,7 @@ def step_train(train_dataloader, test_dataloader, model, optimizer,
         label_ids = label_ids.to(device)
         seq_lens = seq_lens.to(device)
 
-        loss, _ = \
+        loss, _, _, _ = \
             model(input_ids, segment_ids, input_mask, seq_lens,
                             device=device, labels=label_ids)
         if n_gpu > 1:
@@ -300,7 +300,7 @@ def evaluate_fast(test_dataloader, model, device, n_gpu, args):
             seq_lens = seq_lens.to(device)
 
             # intentially with gradient
-            tmp_test_loss, logits = \
+            tmp_test_loss, logits, _, _ = \
                 model(input_ids, segment_ids, input_mask, seq_lens,
                         device=device, labels=label_ids)
 
@@ -353,7 +353,7 @@ def evaluate(test_dataloader, model, device, n_gpu, nb_tr_steps, tr_loss, epoch,
                 seq_lens = seq_lens.to(device)
 
                 # intentially with gradient
-                tmp_test_loss, logits = \
+                tmp_test_loss, logits, _, _ = \
                     model(input_ids, segment_ids, input_mask, seq_lens,
                             device=device, labels=label_ids)
 
@@ -434,7 +434,7 @@ def evaluate_with_hooks(test_dataloader, model, device, label_list):
         seq_lens = seq_lens.to(device)
 
         # intentially with gradient
-        tmp_test_loss, logits = \
+        tmp_test_loss, logits, _, _ = \
             model(input_ids, segment_ids, input_mask, seq_lens,
                     device=device, labels=label_ids)
 

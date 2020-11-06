@@ -526,7 +526,7 @@ def data_and_model_loader(device, n_gpu, args):
         train_sampler = RandomSampler(train_data)
     else:
         train_sampler = DistributedSampler(train_data)
-    train_dataloader = DataLoader(train_data, sampler=train_sampler, batch_size=args.train_batch_size, num_workers=10)
+    train_dataloader = DataLoader(train_data, sampler=train_sampler, batch_size=args.train_batch_size)
 
     # test set stays the same
     test_dataloader = None

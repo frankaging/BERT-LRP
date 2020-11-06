@@ -42,7 +42,8 @@ logger = logging.getLogger(__name__)
 # prepare dataloaders
 processors = {
     "SST5" : SST5_Processor,
-    "SemEval" : SemEval_Processor
+    "SemEval" : SemEval_Processor,
+    "IMDb" : IMDb_Processor
 }
 
 class InputFeatures(object):

@@ -43,7 +43,8 @@ logger = logging.getLogger(__name__)
 processors = {
     "SST5" : SST5_Processor,
     "SemEval" : SemEval_Processor,
-    "IMDb" : IMDb_Processor
+    "IMDb" : IMDb_Processor,
+    "Yelp5" : Yelp5_Processor
 }
 
 class InputFeatures(object):

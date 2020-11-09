@@ -24,7 +24,7 @@ def l_lap_grad(post_hs, pre_hs, post_A, eps=1e-7, bias_factor=1.0, debug=False):
     post_hs_err = post_hs + eps
 
     s_positive = alpha * post_A / post_hs_err
-    positive_relevances = torch.autograd.grad(post_hs, pre_hs, grad_outputs=s_positive)[0]
+    positive_relevances = torch.autograd.grad(post_hs, pre_hs, grad_outputs=s_positive, retain_graph=True)[0]
     inp_relevances = pre_hs_positive * positive_relevances
 
     # rescale

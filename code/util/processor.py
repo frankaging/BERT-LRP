@@ -75,18 +75,21 @@ class IMDb_Processor(DataProcessor):
         train_data = pd.read_csv(os.path.join(data_dir, "train_IMDb.csv"),sep=",").values
         return self._create_examples(train_data, "train")
 
-    def get_test_examples(self, data_dir):
+    def get_test_examples(self, data_dir, sentence_limit=None):
         """See base class."""
         test_data = pd.read_csv(os.path.join(data_dir, "test_IMDb.csv"),sep=",").values
-        return self._create_examples(test_data, "test")
+        return self._create_examples(test_data, "test", sentence_limit)
 
     def get_labels(self):
         """See base class."""
         return [0, 1] # 0: negative; 1: positive
 
-    def _create_examples(self, lines, set_type, debug=True):
+    def _create_examples(self, lines, set_type, debug=True, sentence_limit=None):
         examples = []
         for (i, line) in enumerate(lines):
+            if sentence_limit:
+                if i > sentence_limit:
+                    break
             guid = "%s-%s" % (set_type, i)
             text_a = convert_to_unicode(str(line[0]))
             text_b = None
@@ -112,18 +115,21 @@ class SemEval_Processor(DataProcessor):
         train_data = pd.read_csv(os.path.join(data_dir, "train_SemEval.csv"),sep=",").values
         return self._create_examples(train_data, "train")
 
-    def get_test_examples(self, data_dir):
+    def get_test_examples(self, data_dir, sentence_limit=None):
         """See base class."""
         test_data = pd.read_csv(os.path.join(data_dir, "test_SemEval.csv"),sep=",").values
-        return self._create_examples(test_data, "test")
+        return self._create_examples(test_data, "test", sentence_limit)
 
     def get_labels(self):
         """See base class."""
         return [0, 1, 2] # 0: negative; 1: neutral; 2: positive
 
-    def _create_examples(self, lines, set_type, debug=True):
+    def _create_examples(self, lines, set_type, debug=True, sentence_limit=None):
         examples = []
         for (i, line) in enumerate(lines):
+            if sentence_limit:
+                if i > sentence_limit:
+                    break
             guid = "%s-%s" % (set_type, i)
             text_a = convert_to_unicode(str(line[0]))
             text_b = None
@@ -182,10 +188,10 @@ class SST5_Processor(DataProcessor):
         train_data = sst_reader(data_dir, "stsa.fine.phrases.train")
         return self._create_examples(train_data, "train")
 
-    def get_test_examples(self, data_dir):
+    def get_test_examples(self, data_dir, sentence_limit=None):
         """See base class."""
         test_data = sst_reader(data_dir, "stsa.fine.test")
-        return self._create_examples(test_data, "test")
+        return self._create_examples(test_data, "test", sentence_limit)
 
     def get_dev_examples(self, data_dir):
         """See base class."""
@@ -196,9 +202,12 @@ class SST5_Processor(DataProcessor):
         """See base class."""
         return [0, 1, 2, 3, 4] # 0: very negative ->  4: very positive
 
-    def _create_examples(self, lines, set_type, debug=True):
+    def _create_examples(self, lines, set_type, debug=True, sentence_limit=None):
         examples = []
         for (i, line) in enumerate(lines):
+            if sentence_limit:
+                if i > sentence_limit:
+                    break
             guid = "%s-%s" % (set_type, i)
             text_a = convert_to_unicode(str(line[0]))
             text_b = None
@@ -224,18 +233,21 @@ class Yelp5_Processor(DataProcessor):
         train_data = pd.read_csv(os.path.join(data_dir, "train_Yelp5.csv"),sep=",").values
         return self._create_examples(train_data, "train")
 
-    def get_test_examples(self, data_dir):
+    def get_test_examples(self, data_dir, sentence_limit=None):
         """See base class."""
         test_data = pd.read_csv(os.path.join(data_dir, "test_Yelp5.csv"),sep=",").values
-        return self._create_examples(test_data, "test")
+        return self._create_examples(test_data, "test", sentence_limit)
 
     def get_labels(self):
         """See base class."""
         return [0, 1, 2, 3, 4]
 
-    def _create_examples(self, lines, set_type, debug=True):
+    def _create_examples(self, lines, set_type, debug=True, sentence_limit=None):
         examples = []
         for (i, line) in enumerate(lines):
+            if sentence_limit:
+                if i > sentence_limit:
+                    break
             guid = "%s-%s" % (set_type, i)
             text_a = convert_to_unicode(str(line[0]))
             text_b = None

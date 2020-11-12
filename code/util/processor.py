@@ -78,7 +78,7 @@ class IMDb_Processor(DataProcessor):
     def get_test_examples(self, data_dir, sentence_limit=None):
         """See base class."""
         test_data = pd.read_csv(os.path.join(data_dir, "test_IMDb.csv"),sep=",").values
-        return self._create_examples(test_data, "test", sentence_limit)
+        return self._create_examples(test_data, "test", sentence_limit=sentence_limit)
 
     def get_labels(self):
         """See base class."""
@@ -86,6 +86,7 @@ class IMDb_Processor(DataProcessor):
 
     def _create_examples(self, lines, set_type, debug=True, sentence_limit=None):
         examples = []
+        print("sentence limit=",sentence_limit)
         for (i, line) in enumerate(lines):
             if sentence_limit:
                 if i > sentence_limit:

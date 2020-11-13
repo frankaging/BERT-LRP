@@ -44,7 +44,8 @@ processors = {
     "SST5" : SST5_Processor,
     "SemEval" : SemEval_Processor,
     "IMDb" : IMDb_Processor,
-    "Yelp5" : Yelp5_Processor
+    "Yelp5" : Yelp5_Processor,
+    "Yelp2" : Yelp2_Processor,
 }
 
 class InputFeatures(object):

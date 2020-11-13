@@ -7,7 +7,7 @@ parser.add_argument("--task_name",
                    type=str,
                    required=True,
                    choices=["IMDb", "SemEval",
-                            "SST5", "Yelp5"],
+                            "SST5", "Yelp5", "Yelp2"],
                    help="The name of the task to train.")
 parser.add_argument("--data_dir",
                    default=None,

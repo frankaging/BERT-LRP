@@ -225,6 +225,47 @@ class SST5_Processor(DataProcessor):
                 InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
         return examples
 
+class Yelp2_Processor(DataProcessor):
+    """Processor for the Yelp2 data set."""
+
+    def __init__(self):
+        """load everything into memory first"""
+
+    def get_train_examples(self, data_dir):
+        """See base class."""
+        train_data = pd.read_csv(os.path.join(data_dir, "train_Yelp2.csv"),sep=",").values
+        return self._create_examples(train_data, "train")
+
+    def get_test_examples(self, data_dir, sentence_limit=None):
+        """See base class."""
+        test_data = pd.read_csv(os.path.join(data_dir, "test_Yelp2.csv"),sep=",").values
+        return self._create_examples(test_data, "test", sentence_limit=sentence_limit)
+
+    def get_labels(self):
+        """See base class."""
+        return [0, 1]
+
+    def _create_examples(self, lines, set_type, debug=True, sentence_limit=None):
+        examples = []
+        print("sentence limit=",sentence_limit)
+        for (i, line) in enumerate(lines):
+            if sentence_limit:
+                if i > sentence_limit:
+                    break
+            guid = "%s-%s" % (set_type, i)
+            text_a = convert_to_unicode(str(line[0]))
+            text_b = None
+            label = int(str(line[1])) - 1
+            if i==0 and debug:
+                print(i)
+                print("guid=",guid)
+                print("text_a=",text_a)
+                print("text_b=",text_b)
+                print("label=",label)
+            examples.append(
+                InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
+        return examples
+
 class Yelp5_Processor(DataProcessor):
     """Processor for the Yelp5 data set."""
 

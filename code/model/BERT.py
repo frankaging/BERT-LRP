@@ -59,6 +59,8 @@ def init_hooks_lrp(model):
         get_activation('model.bert.pooler.dense'))
     model.bert.pooler.register_forward_hook(
         get_inputivation('model.bert.pooler'))
+    model.bert.pooler.register_forward_hook(
+        get_activation('model.bert.pooler'))
 
     model.bert.embeddings.word_embeddings.register_forward_hook(
         get_activation('model.bert.embeddings.word_embeddings'))
@@ -101,6 +103,8 @@ def init_hooks_lrp(model):
         layer_name_self = 'model.bert.encoder.' + str(layer_module_index) + \
                                 '.attention.self'
         module_layer.attention.self.register_forward_hook(
+            get_inputivation(layer_name_self))
+        module_layer.attention.self.register_forward_hook(
             get_activation_multi(layer_name_self))
 
         layer_name_value = 'model.bert.encoder.' + str(layer_module_index) + \
@@ -110,6 +114,20 @@ def init_hooks_lrp(model):
         module_layer.attention.self.value.register_forward_hook(
             get_activation(layer_name_value))
 
+        layer_name_query = 'model.bert.encoder.' + str(layer_module_index) + \
+                                '.attention.self.query'
+        module_layer.attention.self.query.register_forward_hook(
+            get_inputivation(layer_name_query))
+        module_layer.attention.self.query.register_forward_hook(
+            get_activation(layer_name_query))
+
+        layer_name_key = 'model.bert.encoder.' + str(layer_module_index) + \
+                                '.attention.self.key'
+        module_layer.attention.self.key.register_forward_hook(
+            get_inputivation(layer_name_key))
+        module_layer.attention.self.key.register_forward_hook(
+            get_activation(layer_name_key))
+        
         layer_module_index += 1
 
 def gelu(x):
@@ -196,8 +214,7 @@ class BertConfig(object):
     def to_json_string(self):
         """Serializes this instance to a JSON string."""
         return json.dumps(self.to_dict(), indent=2, sort_keys=True) + "\n"
-
-
+    
 class BERTLayerNorm(nn.Module):
     def __init__(self, config, variance_epsilon=1e-12):
         """Construct a layernorm module in the TF style (epsilon inside the square root).
@@ -307,37 +324,93 @@ class BERTSelfAttention(nn.Module):
         new_context_layer_shape = context_layer.size()[:-2] + (self.all_head_size,)
         context_layer = context_layer.view(*new_context_layer_shape)
         return context_layer, attention_probs
+    
+    def jacobian_forward(self, mixed_query_layer, mixed_key_layer, mixed_value_layer, attention_mask):
+        query_layer = self.transpose_for_scores(mixed_query_layer)
+        key_layer = self.transpose_for_scores(mixed_key_layer)
+        value_layer = self.transpose_for_scores(mixed_value_layer)
+
+        # Take the dot product between "query" and "key" to get the raw attention scores.
+        attention_scores = torch.matmul(query_layer, key_layer.transpose(-1, -2))
+        attention_scores = attention_scores / math.sqrt(self.attention_head_size)
+        # Apply the attention mask is (precomputed for all layers in BertModel forward() function)
+        attention_scores = attention_scores + attention_mask
+
+        # Normalize the attention scores to probabilities.
+        attention_probs = nn.Softmax(dim=-1)(attention_scores)
+
+        # This is actually dropping out entire tokens to attend to, which might
+        # seem a bit unusual, but is taken from the original Transformer paper.
+        attention_probs = self.dropout(attention_probs)
+
+        context_layer = torch.matmul(attention_probs, value_layer)
+        context_layer = context_layer.permute(0, 2, 1, 3).contiguous()
+        new_context_layer_shape = context_layer.size()[:-2] + (self.all_head_size,)
+        context_layer = context_layer.view(*new_context_layer_shape)
+        return context_layer
 
     def backward_lrp(self, relevance_score, layer_module_index):
         """
         This is the lrp explicitily considering the attention layer.
         """
-        layer_name_self = 'model.bert.encoder.' + str(layer_module_index) + \
-                                '.attention.self'
-        context_layer = func_activations[layer_name_self][0]
-        context_layer_reshape = self.transpose_for_context(context_layer)
-        attention_probs = func_activations[layer_name_self][1]
 
         layer_name_value = 'model.bert.encoder.' + str(layer_module_index) + \
                                 '.attention.self.value'
+        layer_name_query = 'model.bert.encoder.' + str(layer_module_index) + \
+                                '.attention.self.query'
+        layer_name_key = 'model.bert.encoder.' + str(layer_module_index) + \
+                                '.attention.self.key'
         value_in = func_inputs[layer_name_value][0]
         value_out = func_activations[layer_name_value]
-        value_out_reshape = self.transpose_for_scores(value_out)
+        query_in = func_inputs[layer_name_query][0]
+        query_out = func_activations[layer_name_query]
+        key_in = func_inputs[layer_name_key][0]
+        key_out = func_activations[layer_name_key]
+        layer_name_self = 'model.bert.encoder.' + str(layer_module_index) + \
+                                '.attention.self'
+        context_layer = func_activations[layer_name_self][0]
+        attention_mask = func_inputs[layer_name_self][1]
+        
+        # Unfortunately, there is no quick way to populate 
+        # full jacobian matrix quickly in PyTorch, we will
+        # have to iterate through neurons, which quickly 
+        # becomes output scope for our CPU power.
+        
+        # Here, we will treat z_ij (v) = z_ij (q) = z_ij (k)
+        # which is not the case in reality. We have to use
+        # jacobian matrics to estimate them.
+        # jacobian_full = torch.autograd.functional.jacobian(self.jacobian_forward, 
+        #                                                    (query_out, key_out, value_out, attention_mask))
+        # TODO: add in full jacobian LRP support.
+        relevance_score = relevance_score/context_layer
+        jacobian_value = torch.autograd.grad(context_layer, value_out, 
+                                             grad_outputs=relevance_score,
+                                             retain_graph=True)[0]
+        jacobian_query = torch.autograd.grad(context_layer, query_out, 
+                                             grad_outputs=relevance_score,
+                                             retain_graph=True)[0]
+        jacobian_key = torch.autograd.grad(context_layer, key_out, 
+                                           grad_outputs=relevance_score,
+                                           retain_graph=True)[0]
+        jacobian_value = jacobian_value*value_out
+        jacobian_query = jacobian_value*query_out
+        jacobian_key = jacobian_value*key_out
+        # this mimic the self-attention layer as linear layer
 
-        relevance_score = self.transpose_for_context(relevance_score)
-        relevance_score = a_lap_vectorize(context_layer_reshape, value_out_reshape, 
-                                          attention_probs, relevance_score)
+        jacobian_value = backprop_lrp_fc(self.value.weight,
+                                          self.value.bias,
+                                          value_in,
+                                          jacobian_value)
+        jacobian_query = backprop_lrp_fc(self.query.weight,
+                                          self.query.bias,
+                                          query_in,
+                                          jacobian_query)
+        jacobian_key = backprop_lrp_fc(self.key.weight,
+                                          self.key.bias,
+                                          key_in,
+                                          jacobian_key)
+        relevance_score = jacobian_value + jacobian_query + jacobian_key
 
-        relevance_score = self.transpose_for_value(relevance_score)
-        relevance_score = l_lap_grad(value_out, value_in, relevance_score)
-
-        return relevance_score
-
-    def backward_lrp_voita(self, relevance_score, layer_module_index):
-        """
-        This is the lrp without explicitily considering the attention layer.
-        """
-        # TODO: move voita's head paper implementation here.
         return relevance_score
 
 class BERTSelfOutput(nn.Module):
@@ -354,15 +427,13 @@ class BERTSelfOutput(nn.Module):
         return hidden_states
     
     def backward_lrp(self, relevance_score, layer_module_index):
-        layer_name_attn_layernorm = 'model.bert.encoder.' + str(layer_module_index) + \
-                                '.attention.output.LayerNorm'
-        layernorm_in = func_inputs[layer_name_attn_layernorm][0]
         layer_name = 'model.bert.encoder.' + str(layer_module_index) + \
                         '.attention.output.dense'
         dense_in = func_inputs[layer_name][0]
-        dense_out = func_activations[layer_name]
-        relevance_score = l_lap_grad(layernorm_in, dense_out, relevance_score)
-        relevance_score = l_lap_grad(dense_out, dense_in, relevance_score)
+        relevance_score = backprop_lrp_fc(self.dense.weight,
+                                          self.dense.bias,
+                                          dense_in,
+                                          relevance_score)
         return relevance_score
 
 class BERTAttention(nn.Module):
@@ -396,8 +467,10 @@ class BERTIntermediate(nn.Module):
         layer_name = 'model.bert.encoder.' + str(layer_module_index) + \
                         '.intermediate.dense'
         dense_in = func_inputs[layer_name][0]
-        dense_out = func_activations[layer_name]
-        relevance_score = l_lap_grad(dense_out, dense_in, relevance_score)
+        relevance_score = backprop_lrp_fc(self.dense.weight,
+                                          self.dense.bias,
+                                          dense_in,
+                                          relevance_score)
         return relevance_score
 
 class BERTOutput(nn.Module):
@@ -414,15 +487,13 @@ class BERTOutput(nn.Module):
         return hidden_states
 
     def backward_lrp(self, relevance_score, layer_module_index):
-        layer_name_output_layernorm = 'model.bert.encoder.' + str(layer_module_index) + \
-                                '.output.LayerNorm'
-        layernorm_in = func_inputs[layer_name_output_layernorm][0]
         layer_name = 'model.bert.encoder.' + str(layer_module_index) + \
                         '.output.dense'
         dense_in = func_inputs[layer_name][0]
-        dense_out = func_activations[layer_name]
-        relevance_score = l_lap_grad(layernorm_in, dense_out, relevance_score)
-        relevance_score = l_lap_grad(dense_out, dense_in, relevance_score)
+        relevance_score = backprop_lrp_fc(self.dense.weight,
+                                          self.dense.bias,
+                                          dense_in,
+                                          relevance_score)
         return relevance_score
 
 class BERTLayer(nn.Module):
@@ -468,39 +539,6 @@ class BERTEncoder(nn.Module):
             layer_module_index -= 1
         return relevance_score
 
-class BERTFullPooler(nn.Module):
-    def __init__(self, config):
-        super(BERTFullPooler, self).__init__()
-        self.attention_gate = nn.Sequential(nn.Linear(config.hidden_size, 32),
-                              nn.ReLU(),
-                              nn.Dropout(config.hidden_dropout_prob),
-                              nn.Linear(32, 1))
-        # old fileds
-        self.dense = nn.Linear(config.hidden_size, config.hidden_size)
-        self.activation = nn.Tanh()
-
-    def forward(self, hidden_states, optional_attn_mask=None):
-        #######################################################################
-        # In pooling, we are using a local context attention mechanism, instead
-        # of just pooling the first [CLS] elements
-        attn_scores = self.attention_gate(hidden_states)
-        extended_attention_mask = optional_attn_mask.unsqueeze(dim=-1)
-        attn_scores = \
-            attn_scores.masked_fill(extended_attention_mask == 0, -1e9)
-        attn_scores = nn.Softmax(dim=1)(attn_scores)
-        # attened embeddings
-        pooled_output = \
-            torch.matmul(attn_scores.permute(0,2,1), hidden_states).squeeze(dim=1)
-        #######################################################################
-        pooled_output = self.dense(pooled_output)
-        pooled_output = self.activation(pooled_output)
-        return pooled_output
-
-    def backward_lrp(self, relevance_score):
-        # TODO:
-
-        return relevance_score
-
 class BERTPooler(nn.Module):
     def __init__(self, config):
         super(BERTPooler, self).__init__()
@@ -518,8 +556,10 @@ class BERTPooler(nn.Module):
 
     def backward_lrp(self, relevance_score):
         dense_in = func_inputs['model.bert.pooler.dense'][0]
-        dense_out = func_activations['model.bert.pooler.dense']
-        relevance_score = l_lap_grad(dense_out, dense_in, relevance_score)
+        relevance_score = backprop_lrp_fc(self.dense.weight,
+                                          self.dense.bias,
+                                          dense_in,
+                                          relevance_score)        
         # we need to scatter this to all hidden states, but only first
         # one matters!
         pooler_in = func_inputs['model.bert.pooler'][0]
@@ -553,10 +593,7 @@ class BertModel(nn.Module):
         super(BertModel, self).__init__()
         self.embeddings = BERTEmbeddings(config)
         self.encoder = BERTEncoder(config)
-        if config.full_pooler:
-            self.pooler = BERTFullPooler(config)
-        else:
-            self.pooler = BERTPooler(config)
+        self.pooler = BERTPooler(config)
 
     def forward(self, input_ids, token_type_ids=None, attention_mask=None):
         if attention_mask is None:
@@ -588,7 +625,6 @@ class BertModel(nn.Module):
     def backward_lrp(self, relevance_score):
         relevance_score = self.pooler.backward_lrp(relevance_score)
         relevance_score = self.encoder.backward_lrp(relevance_score)
-        relevance_score = self.embeddings.backward_lrp(relevance_score)
         return relevance_score
 
 class BertForSequenceClassification(nn.Module):
@@ -649,15 +685,38 @@ class BertForSequenceClassification(nn.Module):
         else:
             return logits
 
-    def backward_lrp(self, relevance_score):
-        classifier_in = func_inputs['model.classifier'][0]
-        classifier_out = func_activations['model.classifier']
-        relevance_score = l_lap_grad(classifier_out, classifier_in, relevance_score)
-        relevance_score = self.bert.backward_lrp(relevance_score)
-        return relevance_score
-
     def backward_gradient(self, sensitivity_grads):
         classifier_out = func_activations['model.classifier']
         embedding_output = func_activations['model.bert.embeddings']
-        sensitivity_grads = torch.autograd.grad(classifier_out, embedding_output, grad_outputs=sensitivity_grads)[0]
+        sensitivity_grads = torch.autograd.grad(classifier_out, embedding_output, 
+                                                grad_outputs=sensitivity_grads, 
+                                                retain_graph=True)[0]
         return sensitivity_grads
+    
+    def backward_gradient_input(self, sensitivity_grads):
+        classifier_out = func_activations['model.classifier']
+        embedding_output = func_activations['model.bert.embeddings']
+        sensitivity_grads = torch.autograd.grad(classifier_out, embedding_output, 
+                                                grad_outputs=sensitivity_grads, 
+                                                retain_graph=True)[0]
+        return sensitivity_grads * embedding_output
+
+    def backward_lrp(self, relevance_score):
+        classifier_in = func_inputs['model.classifier'][0]
+        classifier_out = func_activations['model.classifier']
+        relevance_score = backprop_lrp_fc(self.classifier.weight,
+                                          self.classifier.bias,
+                                          classifier_in,
+                                          relevance_score)
+        relevance_score = self.bert.backward_lrp(relevance_score)
+        return relevance_score
+    
+    def backward_lat(self, input_ids, attention_probs):
+        # backing out using the quasi-attention
+        attention_scores = torch.zeros_like(input_ids, dtype=torch.float)
+        attention_scores[:,0] = 1.
+        attention_scores = torch.stack(12 * [attention_scores], dim=1).unsqueeze(dim=2)
+        for i in reversed(range(12)):
+            attention_scores = torch.matmul(attention_scores, attention_probs[i])
+        attention_scores = attention_scores.sum(dim=1).squeeze(dim=1).unsqueeze(dim=-1).data
+        return attention_scores

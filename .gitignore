@@ -1,3 +1,4 @@
+code/notebook/*.pt
 results/
 .DS_Store
 datasets/

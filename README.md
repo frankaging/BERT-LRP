@@ -22,7 +22,7 @@ python convert_tf_checkpoint_to_pytorch.py \
 Our BERT model is adapted from [huggingface](https://github.com/huggingface/transformers) BERT model for text classification. If you want to take a look at the original model please search for [BertForSequenceClassification](https://github.com/huggingface/transformers/blob/master/src/transformers/modeling_bert.py). If you want to fine-tune or train a BERT classifier, you can either use their pipeline line or ours. Ours is tested against theirs before publishing. It is bug-free. To train a model, you can do something like this,
 ```bash
 cd code/
-CUDA_VISIBLE_DEVICES=0,2 python run_classifier.py \
+CUDA_VISIBLE_DEVICES=0.1,2 python run_classifier.py \
 --model_type BERTPretrain \
 --eval_test \
 --do_lower_case \
@@ -31,13 +31,13 @@ CUDA_VISIBLE_DEVICES=0,2 python run_classifier.py \
 --eval_batch_size 8 \
 --learning_rate 2e-5 \
 --num_train_epochs 3 \
---seed 42 \
+--seed 123 \
 --task_name SST5 \
---data_dir ../data/dataset/SST5/ \
---vocab_file ../data/uncased_L-12_H-768_A-12/vocab.txt \
---bert_config_file ../data/uncased_L-12_H-768_A-12/bert_config.json \
---output_dir ../results/SST5/ \
---init_checkpoint ../data/uncased_L-12_H-768_A-12/pytorch_model.bin
+--data_dir ../datasets/SST5/ \
+--vocab_file ../models/BERT-Google/vocab.txt \
+--bert_config_file ../models/BERT-Google/bert_config.json \
+--output_dir ../results/SST5-NewSeed/ \
+--init_checkpoint ../models/BERT-Google/pytorch_model.bin
 ```
 Take a look at ``code/util/processor.py`` to see how we process different datasets. We currently supports almost 10 different dataset loadings. You can create your own within 1 minute for loading data. You can specify your directories info above in the command.
 

@@ -3,14 +3,14 @@ BERT, as one of the pretrianed language models, attracts the most attention in r
 
 ### Citation
 
-[Zhengxuan Wu](http://zen-wu.social) and [Desmond C. Ong](https://web.stanford.edu/~dco/). 2020. [On Explaining Your Explanations of BERT: An Empirical Study with Sequence Classification](https://zen-wu.social/papers/ACL21Explain.pdf). Ms., Stanford University and National University of Singapore.
+[Zhengxuan Wu](http://zen-wu.social) and [Desmond C. Ong](https://web.stanford.edu/~dco/). 2020. [On Explaining Your Explanations of BERT: An Empirical Study with Sequence Classification](https://arxiv.org/abs/2101.00196). Ms., Stanford University and National University of Singapore.
 
 ```stex
   @article{wu-ong-2020-explain,
     title={On Explaining Your Explanations of BERT: An Empirical Study with Sequence Classification},
     author={Wu, Zhengxuan and Ong, Desmond C.},
     journal={arXiv preprint},
-    url={https://zen-wu.social/papers/ACL21Explain.pdf},
+    url={https://arxiv.org/abs/2101.00196},
     year={2020}}
 ```
 

@@ -21,7 +21,7 @@ def main(args):
     global_step = 0
     global_best_acc = -1
     epoch=0
-    evaluate_interval = 500
+    evaluate_interval = 5
     # training epoch to eval
     for _ in trange(int(args.num_train_epochs), desc="Epoch"):
         # train a teacher model solving this task
@@ -29,12 +29,16 @@ def main(args):
             step_train(train_dataloader, test_dataloader, model, optimizer, 
                         device, n_gpu, evaluate_interval, global_step, 
                         output_log_file, epoch, global_best_acc, args)
+        if global_step == -1:
+            logger.info("***** Early Stop with patient count *****")
+            break
         epoch += 1
 
     logger.info("***** Global best performance *****")
     logger.info("accuracy on dev set: " + str(global_best_acc))
     
 if __name__ == "__main__":
+
     from util.args_parser import parser
     args = parser.parse_args()
     main(args)

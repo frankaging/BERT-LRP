@@ -1,3 +1,5 @@
+models/LSTM/
+models/Transformer/
 code/notebook/*.pt
 results/
 .DS_Store

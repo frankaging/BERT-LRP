@@ -58,7 +58,7 @@ def printable_text(text):
 def load_vocab(vocab_file, pretrain=True):
     """Loads a vocabulary file into a dictionary."""
     vocab = collections.OrderedDict()
-    index = 1 if pretrain else 0 # 0 is reserved for padding
+    index = 0
     with open(vocab_file, "r") as reader:
         while True:
             token = convert_to_unicode(reader.readline())
@@ -123,7 +123,23 @@ class FullTokenizer(object):
     def convert_tokens_to_ids(self, tokens):
         return convert_tokens_to_ids(self.vocab, tokens)
 
+class PartialTokenizer(object):
+    """Runs end-to-end tokenziation."""
 
+    def __init__(self, vocab_file, do_lower_case=True, pretrain=True):
+        self.vocab = load_vocab(vocab_file, pretrain=pretrain)
+        self.basic_tokenizer = BasicTokenizer(do_lower_case=do_lower_case)
+
+    def tokenize(self, text):
+        split_tokens = []
+        for token in self.basic_tokenizer.tokenize(text):
+            split_tokens.append(token)
+
+        return split_tokens
+
+    def convert_tokens_to_ids(self, tokens):
+        return convert_tokens_to_ids(self.vocab, tokens)
+    
 class BasicTokenizer(object):
     """Runs basic tokenization (punctuation splitting, lower casing, etc.)."""
 

@@ -1,5 +1,34 @@
-# Auto-Relevance: Automatic Relevance Scores on Tokens for BERT with A Multi-GPU Fine-tune Pipeline
-Regular BERT training is for accuracy, but if you are interested in understanding why BERT made that decision, and which tokens contribute more towards that model decision, this repo will help you understand more about the BERT model. If you want to know the decision of your trained BERT, simple import our BERT model, and train with a gradient hook enabled. Your attribution scores will be calculated with a simple ``backward()`` call.
+# On Explaining Your Explanations of BERT: An Empirical Study with Sequence Classification
+Pytorch implmentation of Gradient Sensitivity, Graident X Input, Layerwise Revelance Propagation and Layerwise Attention Tracing for BERT-based models in just a single `model.backward()` call.
+
+
+### Citation
+
+[Zhengxuan Wu](http://zen-wu.social) and [Desmond C. Ong](https://web.stanford.edu/~dco/). 2020. [On Explaining Your Explanations of BERT: An Empirical Study with Sequence Classification](https://arxiv.org/abs/2101.00196). Ms., Stanford University and National University of Singapore.
+
+```stex
+  @article{wu-ong-2020-explain,
+    title={On Explaining Your Explanations of BERT: An Empirical Study with Sequence Classification},
+    author={Wu, Zhengxuan and Ong, Desmond C.},
+    journal={arXiv preprint},
+    url={https://arxiv.org/abs/2101.00196},
+    year={2020}}
+```
+
+### Abstract
+BERT, as one of the pretrianed language models, attracts the most attention in recent years for creating new benchmarks across NLP tasks via fine-tuning. One pressing issue is to open up the blackbox and explain the decision makings of BERT. A number of attribution techniques have been proposed to explain BERT models, but are often limited to sequence to sequence tasks. In this paper, we adapt existing attribution methods on explaining decision makings of BERT in sequence classification tasks. We conduct extensive analyses of four existing attribution methods by applying them to four different datasets in sentiment analysis. We compare the reliability and robustness of each method via various ablation studies. Furthermore, we test whether attribution methods explain generalized semantics across semantically similar tasks. Our work provides solid guidance for using attribution methods to explain decision makings of BERT for downstream classification tasks.
+
+### Introduction
+Regular BERT training is for accuracy, but if you are interested in understanding why BERT made that decision, and which tokens contribute more towards that model decision, this repo will help you understand more about the BERT model. If you want to know the decision of your trained BERT, simple import our BERT model, and train with a gradient hook enabled. Your attribution scores will be calculated with a simple ``backward()`` call:
+```python
+from BERT import *
+# initialize model with our own BERT module
+model = BERT()
+# training loop
+model.train()
+# after training, simply call respective attribuiton method's backward function
+model.backward()
+```
 
 ### Install Requirements
 You will have to clone this repo, and install all the dependencies. You can skip this step if you have torch and cuda installed. That is all you need. You can also mannually install these without going through this installation headache that ``requirements.txt`` may give you.

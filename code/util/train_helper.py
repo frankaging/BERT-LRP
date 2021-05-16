@@ -609,7 +609,7 @@ def data_and_model_loader(device, n_gpu, args):
         all_input_ids = torch.tensor([f.input_ids for f in test_features], dtype=torch.long)
         all_input_mask = torch.tensor([f.input_mask for f in test_features], dtype=torch.long)
         if args.model_type == "BERT":
-            all_segment_ids = torch.tensor([f.segment_ids for f in train_features], dtype=torch.long)
+            all_segment_ids = torch.tensor([f.segment_ids for f in test_features], dtype=torch.long)
         all_label_ids = torch.tensor([f.label_id for f in test_features], dtype=torch.long)
         all_seq_len = torch.tensor([[f.seq_len] for f in test_features], dtype=torch.long)
 

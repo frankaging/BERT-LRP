@@ -27,6 +27,12 @@ def backprop_lrp_fc(weight, bias, activations, R,
     
     weight_p = torch.clamp(weight, min=0.0)
     bias_p = torch.clamp(bias, min=0.0)    
+    # PR https://github.com/frankaging/BERT-LRP/issues/4#issue-1323274328
+    # This is not the original alpha-beta rule, please do the following
+    # for the original alpha-beta rule for (potentially) more stable results!
+    # e.g., 
+    # z = torch.matmul(activations, weight.T)
+    # z_p = torch.clamp(z, min=0.0)
     z_p = torch.matmul(activations, weight_p.T) + bias_p + eps
     s_p = R / z_p
     c_p = torch.matmul(s_p, weight_p)
@@ -57,6 +63,12 @@ def backprop_lrp_nl(weight, activations, R,
     activations = activations.unsqueeze(dim=2) # [b, l, 1, h_in]
 
     weight_p = torch.clamp(weight, min=0.0) 
+    # PR https://github.com/frankaging/BERT-LRP/issues/4#issue-1323274328
+    # This is not the original alpha-beta rule, please do the following
+    # for the original alpha-beta rule for (potentially) more stable results!
+    # e.g., 
+    # z = torch.matmul(activations, weight.T)
+    # z_p = torch.clamp(z, min=0.0)
     z_p = torch.matmul(activations, weight_p.transpose(2,3)) + eps
     s_p = R / z_p # [b, l, 1, h_out]
     c_p = torch.matmul(s_p, weight_p) # [b, l, 1, h_in]
